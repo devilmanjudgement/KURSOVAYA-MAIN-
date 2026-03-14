@@ -89,11 +89,16 @@ CREATE TABLE IF NOT EXISTS messages (
   sender_id INTEGER,
   receiver_id INTEGER,
   text TEXT,
+  read INTEGER DEFAULT 0,
   created_at TEXT DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (sender_id) REFERENCES users(id),
   FOREIGN KEY (receiver_id) REFERENCES users(id)
 )
 `).run();
+
+try {
+  db.prepare("ALTER TABLE messages ADD COLUMN read INTEGER DEFAULT 0").run();
+} catch (_) {}
 
 /* =========================================================
    Авторизация / Регистрация
@@ -107,11 +112,13 @@ app.post("/api/login", (req, res) => {
 
 app.post("/api/register", (req, res) => {
   const { name, login, password, role, group_name } = req.body;
-  if (!name || !login || !password || !role)
+  if (!name || !login || !password)
     return res.json({ success: false, message: "Не все поля заполнены" });
+  if (role === "coach")
+    return res.json({ success: false, message: "Регистрация преподавателей недоступна" });
   try {
     db.prepare("INSERT INTO users(name,login,password,role,group_name) VALUES (?,?,?,?,?)")
-      .run(name, login, password, role, group_name);
+      .run(name, login, password, "student", group_name || null);
     res.json({ success: true });
   } catch {
     res.json({ success: false, message: "Такой логин уже существует" });
@@ -174,15 +181,14 @@ app.get("/api/sections/:id", (req, res) => {
 });
 
 app.get("/api/sections/:id/enrolled", (req, res) => {
-  const rows = db
-    .prepare(
-      `SELECT u.name, u.group_name, u.health_doc, b.status
-         FROM bookings b
-         JOIN users u ON u.name = b.user
-        WHERE b.sectionId = ?
-          AND b.status != 'cancelled'`
-    )
-    .all(req.params.id);
+  const rows = db.prepare(`
+    SELECT u.id, u.name, u.group_name, u.health_doc, MAX(b.status) AS status
+      FROM bookings b
+      JOIN users u ON u.name = b.user
+      WHERE b.sectionId = ?
+        AND b.status != 'cancelled'
+      GROUP BY u.id, u.name, u.group_name, u.health_doc
+  `).all(req.params.id);
   res.json(rows);
 });
 
@@ -270,9 +276,10 @@ app.get("/api/student/:name/enrollments", (req, res) => {
 ========================================================= */
 app.get("/api/schedule", (_, res) => {
   const rows = db.prepare(`
-    SELECT sc.*, s.title, s.place, s.color, s.coach_id
+    SELECT sc.*, s.title, s.place, s.color, s.coach_id, u.name AS coach_name
       FROM schedule sc
       JOIN sections s ON s.id = sc.section_id
+      LEFT JOIN users u ON u.id = s.coach_id
     ORDER BY sc.id`).all();
   res.json(rows);
 });
@@ -314,6 +321,22 @@ app.get("/api/users/students", (_, res) => {
   res.json(rows);
 });
 
+app.get("/api/messages/unread/:userId", (req, res) => {
+  const { userId } = req.params;
+  const row = db.prepare(
+    "SELECT COUNT(*) AS count FROM messages WHERE receiver_id=? AND read=0"
+  ).get(userId);
+  res.json({ count: row.count });
+});
+
+app.put("/api/messages/read/:userId/:senderId", (req, res) => {
+  const { userId, senderId } = req.params;
+  db.prepare(
+    "UPDATE messages SET read=1 WHERE receiver_id=? AND sender_id=?"
+  ).run(userId, senderId);
+  res.json({ success: true });
+});
+
 app.get("/api/messages/:userId/:otherId", (req, res) => {
   const { userId, otherId } = req.params;
   const rows = db.prepare(`
@@ -330,20 +353,31 @@ app.post("/api/messages", (req, res) => {
   const { sender_id, receiver_id, text } = req.body;
   if (!sender_id || !receiver_id || !text) return res.json({ success: false });
   const result = db.prepare(
-    "INSERT INTO messages(sender_id,receiver_id,text) VALUES (?,?,?)"
+    "INSERT INTO messages(sender_id,receiver_id,text,read) VALUES (?,?,?,0)"
   ).run(Number(sender_id), Number(receiver_id), text);
   res.json({ success: true, id: result.lastInsertRowid });
 });
 
 /* =========================================================
-   Сидинг
+   Сидинг: 3 тренера + 5 студентов
 ========================================================= */
 function seedUsers() {
-  if (db.prepare("SELECT COUNT(*) AS c FROM users").get().c) return;
-  const add = db.prepare("INSERT INTO users(name,login,password,role) VALUES (?,?,?,?)");
-  for (let i = 1; i <= 3; i++) add.run(`Тренер №${i}`, `coach${i}`, "123", "coach");
-  add.run("Иван Иванов", "ivan", "123", "student");
-  console.log("✅ Пользователи созданы");
+  const count = db.prepare("SELECT COUNT(*) AS c FROM users").get().c;
+  if (count > 0) return;
+
+  const add = db.prepare("INSERT INTO users(name,login,password,role,group_name) VALUES (?,?,?,?,?)");
+
+  add.run("Иванова Марина Сергеевна", "coach1", "sport123", "coach", null);
+  add.run("Петров Алексей Владимирович", "coach2", "sport123", "coach", null);
+  add.run("Сидорова Елена Николаевна", "coach3", "sport123", "coach", null);
+
+  add.run("Иванов Иван Иванович", "student1", "pass123", "student", "гК-31");
+  add.run("Петрова Анна Сергеевна", "student2", "pass123", "student", "гК-32");
+  add.run("Кузнецов Дмитрий Олегович", "student3", "pass123", "student", "гК-31");
+  add.run("Морозова Елена Андреевна", "student4", "pass123", "student", "гК-33");
+  add.run("Волков Алексей Игоревич", "student5", "pass123", "student", "гК-32");
+
+  console.log("✅ Пользователи созданы (3 тренера + 5 студентов)");
 }
 seedUsers();
 

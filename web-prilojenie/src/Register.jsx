@@ -3,16 +3,17 @@ import { useNavigate } from 'react-router-dom';
 import './App.css';
 
 function Register() {
-  const [role, setRole] = useState("student");
   const navigate = useNavigate();
+  const [agreed, setAgreed] = useState(false);
 
   const handleRegister = (e) => {
     e.preventDefault();
+    if (!agreed) return alert("Необходимо согласиться с обработкой персональных данных");
     const payload = {
       name: document.getElementById("name").value.trim(),
       login: document.getElementById("login").value.trim(),
       password: document.getElementById("password").value.trim(),
-      role,
+      role: "student",
       group_name: document.getElementById("group")?.value || null
     };
 
@@ -36,26 +37,55 @@ function Register() {
 
   return (
     <div className="mobile-wrapper">
-      <div className="mobile-screen">
-        <div className="header">
-          <h1 className="app-title">Регистрация</h1>
+      <div className="mobile-screen" style={{ overflowY: "auto" }}>
+        <div className="header" style={{ paddingTop: "40px" }}>
+          <h1 className="app-title" style={{ fontSize: "26px" }}>Регистрация</h1>
+          <p className="app-subtitle">Только для студентов</p>
         </div>
 
-        <form className="login-form" onSubmit={handleRegister}>
+        <form className="login-form" onSubmit={handleRegister} style={{ padding: "20px" }}>
           <input id="name" className="input-field" placeholder="ФИО" />
           <input id="login" className="input-field" placeholder="Логин" />
           <input id="password" type="password" className="input-field" placeholder="Пароль" />
+          <input id="group" className="input-field" placeholder="Группа (например гК‑3)" />
 
-          <select className="input-field" value={role} onChange={(e) => setRole(e.target.value)}>
-            <option value="student">Студент</option>
-            <option value="coach">Преподаватель</option>
-          </select>
+          <label style={{
+            display: "flex", alignItems: "flex-start", gap: "10px",
+            fontSize: "12px", color: "#555", cursor: "pointer", marginTop: "6px"
+          }}>
+            <input
+              type="checkbox"
+              checked={agreed}
+              onChange={(e) => setAgreed(e.target.checked)}
+              style={{ marginTop: "2px", flexShrink: 0, accentColor: "#0056b3" }}
+            />
+            <span>
+              Я согласен(а) с{" "}
+              <a
+                href="https://www.consultant.ru/document/cons_doc_LAW_61801/"
+                target="_blank"
+                rel="noreferrer"
+                style={{ color: "#0056b3" }}
+              >
+                Федеральным законом №152-ФЗ «О персональных данных»
+              </a>
+            </span>
+          </label>
 
-          {role === 'student' && (
-            <input id="group" className="input-field" placeholder="Группа (например гК‑3)" />
-          )}
+          <button type="submit" className="login-btn" style={{ marginTop: "14px" }}>
+            Создать аккаунт
+          </button>
 
-          <button type="submit" className="login-btn">Создать аккаунт</button>
+          <button
+            type="button"
+            onClick={() => navigate('/')}
+            style={{
+              background: "transparent", border: "none", color: "#888",
+              fontSize: "13px", cursor: "pointer", marginTop: "8px", textAlign: "center", width: "100%"
+            }}
+          >
+            ← Уже есть аккаунт
+          </button>
         </form>
       </div>
     </div>

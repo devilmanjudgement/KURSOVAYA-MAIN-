@@ -46,7 +46,10 @@ function Chat() {
     if (!selected) return;
     fetch(`/api/messages/${user.id}/${selected.id}`)
       .then((r) => r.json())
-      .then(setMessages)
+      .then((msgs) => {
+        setMessages(msgs);
+        fetch(`/api/messages/read/${user.id}/${selected.id}`, { method: "PUT" }).catch(() => {});
+      })
       .catch(() => {});
   };
 
@@ -74,10 +77,6 @@ function Chat() {
     }
   };
 
-  const addEmoji = (emoji) => {
-    setText((prev) => prev + emoji);
-  };
-
   const formatTime = (ts) => {
     if (!ts) return "";
     const d = new Date(ts);
@@ -90,16 +89,23 @@ function Chat() {
     <div className="mobile-wrapper">
       <div className="mobile-screen" style={{ position: "relative" }}>
         {!selected ? (
-          /* --- Список контактов --- */
           <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
-            <div style={{ padding: "20px 20px 10px", borderBottom: "1px solid #eee" }}>
-              <h2 style={{ margin: 0 }}>
-                {user.role === "coach" ? "Студенты" : "Преподаватели"}
+            <div style={{
+              background: "linear-gradient(135deg, #0056b3, #0077cc)",
+              padding: "24px 20px 18px",
+              color: "#fff",
+            }}>
+              <h2 style={{ margin: 0, fontSize: "20px", fontWeight: 800 }}>
+                💬 {user.role === "coach" ? "Студенты" : "Преподаватели"}
               </h2>
+              <p style={{ margin: "4px 0 0", fontSize: "12px", opacity: 0.8 }}>
+                {contacts.length} контактов
+              </p>
             </div>
+
             <div style={{ flex: 1, overflowY: "auto", paddingBottom: "80px" }}>
               {contacts.length === 0 ? (
-                <p style={{ color: "#aaa", textAlign: "center", marginTop: "30px" }}>
+                <p style={{ color: "#aaa", textAlign: "center", marginTop: "40px" }}>
                   Нет доступных контактов
                 </p>
               ) : (
@@ -108,34 +114,25 @@ function Chat() {
                     key={c.id}
                     onClick={() => setSelected(c)}
                     style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "12px",
-                      padding: "12px 20px",
-                      borderBottom: "1px solid #f0f0f0",
-                      cursor: "pointer",
+                      display: "flex", alignItems: "center", gap: "12px",
+                      padding: "14px 20px", borderBottom: "1px solid #f0f0f0", cursor: "pointer",
                     }}
                   >
                     {c.avatar ? (
-                      <img
-                        src={c.avatar}
-                        alt={c.name}
-                        style={{ width: 44, height: 44, borderRadius: "50%", objectFit: "cover" }}
-                      />
+                      <img src={c.avatar} alt={c.name}
+                        style={{ width: 44, height: 44, borderRadius: "50%", objectFit: "cover" }} />
                     ) : (
-                      <div
-                        style={{
-                          width: 44, height: 44, borderRadius: "50%",
-                          background: "#0056b3", color: "#fff",
-                          display: "flex", alignItems: "center", justifyContent: "center",
-                          fontWeight: "bold", fontSize: "18px",
-                        }}
-                      >
+                      <div style={{
+                        width: 44, height: 44, borderRadius: "50%",
+                        background: "linear-gradient(135deg, #0056b3, #0077cc)",
+                        color: "#fff", display: "flex", alignItems: "center",
+                        justifyContent: "center", fontWeight: "bold", fontSize: "18px",
+                      }}>
                         {c.name?.[0]?.toUpperCase()}
                       </div>
                     )}
                     <div>
-                      <div style={{ fontWeight: 600 }}>{c.name}</div>
+                      <div style={{ fontWeight: 600, fontSize: "15px" }}>{c.name}</div>
                       <div style={{ fontSize: "12px", color: "#888" }}>
                         {user.role === "coach" ? "Студент" : "Преподаватель"}
                       </div>
@@ -147,19 +144,11 @@ function Chat() {
             <Navbar />
           </div>
         ) : (
-          /* --- Окно переписки --- */
           <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
-            {/* Шапка */}
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "10px",
-                padding: "12px 16px",
-                borderBottom: "1px solid #eee",
-                background: "#fff",
-              }}
-            >
+            <div style={{
+              display: "flex", alignItems: "center", gap: "10px",
+              padding: "12px 16px", borderBottom: "1px solid #eee", background: "#fff",
+            }}>
               <button
                 onClick={() => { setSelected(null); setMessages([]); setShowEmoji(false); }}
                 style={{ background: "transparent", border: "none", cursor: "pointer", padding: 0 }}
@@ -167,66 +156,42 @@ function Chat() {
                 <ArrowLeft size={22} color="#333" />
               </button>
               {selected.avatar ? (
-                <img
-                  src={selected.avatar}
-                  alt={selected.name}
-                  style={{ width: 36, height: 36, borderRadius: "50%", objectFit: "cover" }}
-                />
+                <img src={selected.avatar} alt={selected.name}
+                  style={{ width: 36, height: 36, borderRadius: "50%", objectFit: "cover" }} />
               ) : (
-                <div
-                  style={{
-                    width: 36, height: 36, borderRadius: "50%",
-                    background: "#0056b3", color: "#fff",
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                    fontWeight: "bold",
-                  }}
-                >
+                <div style={{
+                  width: 36, height: 36, borderRadius: "50%",
+                  background: "linear-gradient(135deg, #0056b3, #0077cc)",
+                  color: "#fff", display: "flex", alignItems: "center",
+                  justifyContent: "center", fontWeight: "bold",
+                }}>
                   {selected.name?.[0]?.toUpperCase()}
                 </div>
               )}
               <div style={{ fontWeight: 600, fontSize: "15px" }}>{selected.name}</div>
             </div>
 
-            {/* Сообщения */}
-            <div
-              style={{
-                flex: 1,
-                overflowY: "auto",
-                padding: "12px 14px",
-                background: "#f5f5f5",
-                display: "flex",
-                flexDirection: "column",
-                gap: "8px",
-              }}
-            >
+            <div style={{
+              flex: 1, overflowY: "auto", padding: "12px 14px",
+              background: "#f0f4f8", display: "flex", flexDirection: "column", gap: "8px",
+            }}>
               {messages.length === 0 ? (
-                <p style={{ color: "#bbb", textAlign: "center", marginTop: "30px" }}>
-                  Начните переписку
-                </p>
+                <p style={{ color: "#bbb", textAlign: "center", marginTop: "30px" }}>Начните переписку</p>
               ) : (
                 messages.map((m) => {
                   const isMe = m.sender_id === user.id;
                   return (
-                    <div
-                      key={m.id}
-                      style={{
-                        display: "flex",
-                        flexDirection: "column",
-                        alignItems: isMe ? "flex-end" : "flex-start",
-                      }}
-                    >
-                      <div
-                        style={{
-                          background: isMe ? "#0056b3" : "#fff",
-                          color: isMe ? "#fff" : "#222",
-                          borderRadius: isMe ? "16px 16px 4px 16px" : "16px 16px 16px 4px",
-                          padding: "8px 12px",
-                          maxWidth: "75%",
-                          boxShadow: "0 1px 3px rgba(0,0,0,0.08)",
-                          wordBreak: "break-word",
-                          fontSize: "14px",
-                        }}
-                      >
+                    <div key={m.id} style={{ display: "flex", flexDirection: "column", alignItems: isMe ? "flex-end" : "flex-start" }}>
+                      <div style={{
+                        background: isMe ? "linear-gradient(135deg, #0056b3, #0077cc)" : "#fff",
+                        color: isMe ? "#fff" : "#222",
+                        borderRadius: isMe ? "16px 16px 4px 16px" : "16px 16px 16px 4px",
+                        padding: "9px 13px",
+                        maxWidth: "75%",
+                        boxShadow: "0 1px 4px rgba(0,0,0,0.1)",
+                        wordBreak: "break-word",
+                        fontSize: "14px",
+                      }}>
                         {m.text}
                       </div>
                       <span style={{ fontSize: "10px", color: "#aaa", marginTop: "2px" }}>
@@ -239,58 +204,26 @@ function Chat() {
               <div ref={messagesEndRef} />
             </div>
 
-            {/* Панель эмодзи */}
             {showEmoji && (
-              <div
-                style={{
-                  display: "flex",
-                  flexWrap: "wrap",
-                  gap: "4px",
-                  padding: "8px 12px",
-                  background: "#fff",
-                  borderTop: "1px solid #eee",
-                }}
-              >
+              <div style={{
+                display: "flex", flexWrap: "wrap", gap: "2px",
+                padding: "8px 10px", background: "#fff", borderTop: "1px solid #eee",
+              }}>
                 {EMOJIS.map((e) => (
-                  <button
-                    key={e}
-                    onClick={() => addEmoji(e)}
-                    style={{
-                      background: "none",
-                      border: "none",
-                      fontSize: "22px",
-                      cursor: "pointer",
-                      padding: "2px",
-                      lineHeight: 1,
-                    }}
-                  >
+                  <button key={e} onClick={() => setText((p) => p + e)}
+                    style={{ background: "none", border: "none", fontSize: "20px", cursor: "pointer", padding: "3px", lineHeight: 1 }}>
                     {e}
                   </button>
                 ))}
               </div>
             )}
 
-            {/* Поле ввода */}
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "8px",
-                padding: "10px 12px",
-                background: "#fff",
-                borderTop: "1px solid #eee",
-              }}
-            >
-              <button
-                onClick={() => setShowEmoji(!showEmoji)}
-                style={{
-                  background: "none",
-                  border: "none",
-                  cursor: "pointer",
-                  padding: "4px",
-                  color: showEmoji ? "#0056b3" : "#888",
-                }}
-              >
+            <div style={{
+              display: "flex", alignItems: "center", gap: "8px",
+              padding: "10px 12px", background: "#fff", borderTop: "1px solid #eee",
+            }}>
+              <button onClick={() => setShowEmoji(!showEmoji)}
+                style={{ background: "none", border: "none", cursor: "pointer", padding: "4px", color: showEmoji ? "#0056b3" : "#888" }}>
                 <Smile size={22} />
               </button>
               <input
@@ -299,30 +232,17 @@ function Chat() {
                 onKeyDown={handleKey}
                 placeholder="Введите сообщение..."
                 style={{
-                  flex: 1,
-                  border: "1px solid #e0e0e0",
-                  borderRadius: "20px",
-                  padding: "8px 14px",
-                  fontSize: "14px",
-                  outline: "none",
-                  background: "#f5f5f5",
+                  flex: 1, border: "1px solid #e0e0e0", borderRadius: "20px",
+                  padding: "8px 14px", fontSize: "14px", outline: "none", background: "#f5f5f5",
                 }}
               />
-              <button
-                onClick={sendMessage}
+              <button onClick={sendMessage}
                 style={{
-                  background: "#0056b3",
-                  border: "none",
-                  borderRadius: "50%",
-                  width: "38px",
-                  height: "38px",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  cursor: "pointer",
-                  flexShrink: 0,
-                }}
-              >
+                  background: "linear-gradient(135deg, #0056b3, #0077cc)",
+                  border: "none", borderRadius: "50%", width: "38px", height: "38px",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  cursor: "pointer", flexShrink: 0,
+                }}>
                 <Send size={16} color="#fff" />
               </button>
             </div>
