@@ -1,25 +1,30 @@
 import React, { useEffect, useState } from "react";
-import { Check, XCircle } from "lucide-react";
+import { Check, XCircle, PlusCircle, Trash2 } from "lucide-react";
 import "./App.css";
 
 function TeacherPanel() {
-  const user = JSON.parse(localStorage.getItem("user"));
+  const user = JSON.parse(localStorage.getItem("user") || "{}");
 
   const [sections, setSections] = useState([]);
   const [bookings, setBookings] = useState([]);
   const [students, setStudents] = useState([]);
   const [openSection, setOpenSection] = useState(null);
+  const [showForm, setShowForm] = useState(false);
+  const [imageFile, setImageFile] = useState(null);
+  const [form, setForm] = useState({
+    title: "",
+    place: "",
+    color: "#0056b3",
+    description: "",
+    max_students: 20,
+  });
 
-  // === Загрузка данных ===
   const loadData = () => {
     Promise.all([
       fetch("/api/sections").then((r) => r.json()),
-      fetch(`/api/teacher/${user.id}/bookings`).then((r) =>
-        r.ok ? r.json() : []
-      ),
+      fetch(`/api/teacher/${user.id}/bookings`).then((r) => (r.ok ? r.json() : [])),
     ])
       .then(([secs, books]) => {
-        // фильтрация секций по преподавателю
         setSections(Array.isArray(secs) ? secs.filter((s) => s.coach_id === user.id) : []);
         setBookings(Array.isArray(books) ? books : []);
       })
@@ -28,7 +33,6 @@ function TeacherPanel() {
 
   useEffect(loadData, []);
 
-  // === Загрузка студентов секции ===
   const viewStudents = (sectionId) => {
     if (openSection === sectionId) {
       setOpenSection(null);
@@ -41,7 +45,6 @@ function TeacherPanel() {
       .catch(() => setStudents([]));
   };
 
-  // === Изменение статуса заявки ===
   const changeStatus = (id, status) => {
     fetch(`/api/bookings/${id}/status`, {
       method: "PUT",
@@ -53,10 +56,125 @@ function TeacherPanel() {
       .catch(() => alert("Ошибка при изменении статуса"));
   };
 
+  const createSection = () => {
+    if (!form.title || !form.place) return alert("Заполните название и место");
+    const fd = new FormData();
+    fd.append("title", form.title);
+    fd.append("place", form.place);
+    fd.append("color", form.color);
+    fd.append("description", form.description);
+    fd.append("max_students", String(form.max_students));
+    fd.append("coach_id", String(user.id));
+    if (imageFile) fd.append("image", imageFile);
+
+    fetch("/api/sections", { method: "POST", body: fd })
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.success) {
+          setShowForm(false);
+          setForm({ title: "", place: "", color: "#0056b3", description: "", max_students: 20 });
+          setImageFile(null);
+          loadData();
+        } else {
+          alert(d.message || "Ошибка при создании секции");
+        }
+      })
+      .catch(() => alert("Ошибка сервера"));
+  };
+
+  const deleteSection = (id) => {
+    if (!window.confirm("Удалить секцию?")) return;
+    fetch(`/api/sections/${id}`, { method: "DELETE" })
+      .then(() => loadData())
+      .catch(() => alert("Ошибка при удалении"));
+  };
+
   return (
     <div style={{ maxHeight: "72vh", overflowY: "auto", paddingRight: "6px" }}>
       {/* === Мои секции === */}
-      <h3 style={{ margin: "15px 0 10px" }}>Мои секции</h3>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", margin: "15px 0 10px" }}>
+        <h3 style={{ margin: 0 }}>Мои секции</h3>
+        <button
+          onClick={() => setShowForm(!showForm)}
+          style={{
+            background: showForm ? "#888" : "#0056b3",
+            color: "#fff",
+            border: "none",
+            borderRadius: "8px",
+            padding: "5px 10px",
+            fontSize: "13px",
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            gap: "4px",
+          }}
+        >
+          <PlusCircle size={14} /> {showForm ? "Отмена" : "Добавить"}
+        </button>
+      </div>
+
+      {/* === Форма создания секции === */}
+      {showForm && (
+        <div
+          style={{
+            background: "#f5f8ff",
+            border: "1px solid #dce6ff",
+            borderRadius: "12px",
+            padding: "14px",
+            marginBottom: "14px",
+          }}
+        >
+          <h4 style={{ margin: "0 0 10px" }}>Новая секция</h4>
+          <input
+            className="input-field"
+            placeholder="Название секции *"
+            value={form.title}
+            onChange={(e) => setForm({ ...form, title: e.target.value })}
+            style={{ marginBottom: "8px" }}
+          />
+          <input
+            className="input-field"
+            placeholder="Место проведения *"
+            value={form.place}
+            onChange={(e) => setForm({ ...form, place: e.target.value })}
+            style={{ marginBottom: "8px" }}
+          />
+          <input
+            className="input-field"
+            placeholder="Описание"
+            value={form.description}
+            onChange={(e) => setForm({ ...form, description: e.target.value })}
+            style={{ marginBottom: "8px" }}
+          />
+          <div style={{ display: "flex", gap: "8px", marginBottom: "8px", alignItems: "center" }}>
+            <label style={{ fontSize: "13px", color: "#555" }}>Цвет:</label>
+            <input
+              type="color"
+              value={form.color}
+              onChange={(e) => setForm({ ...form, color: e.target.value })}
+              style={{ width: "40px", height: "32px", border: "none", borderRadius: "6px", cursor: "pointer" }}
+            />
+            <input
+              className="input-field"
+              type="number"
+              placeholder="Макс. студентов"
+              value={form.max_students}
+              onChange={(e) => setForm({ ...form, max_students: e.target.value })}
+              style={{ flex: 1 }}
+            />
+          </div>
+          <div style={{ marginBottom: "10px" }}>
+            <label style={{ fontSize: "13px", color: "#555", display: "block", marginBottom: "4px" }}>
+              Фото секции:
+            </label>
+            <input type="file" accept="image/*" onChange={(e) => setImageFile(e.target.files[0])} />
+          </div>
+          <button className="login-btn" onClick={createSection}>
+            Создать секцию
+          </button>
+        </div>
+      )}
+
       {sections.length > 0 ? (
         sections.map((s) => (
           <div
@@ -69,8 +187,21 @@ function TeacherPanel() {
               boxShadow: "0 2px 6px rgba(0,0,0,0.05)",
             }}
           >
-            <b>{s.title}</b>
-            <div style={{ fontSize: "13px", color: "#555" }}>📍 {s.place}</div>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+              <div>
+                <b>{s.title}</b>
+                <div style={{ fontSize: "13px", color: "#555" }}>📍 {s.place}</div>
+                <div style={{ fontSize: "12px", color: "#888" }}>
+                  👥 {s.students_count || 0} / {s.max_students}
+                </div>
+              </div>
+              <button
+                onClick={() => deleteSection(s.id)}
+                style={{ background: "transparent", border: "none", cursor: "pointer", padding: "2px" }}
+              >
+                <Trash2 size={16} color="#f44" />
+              </button>
+            </div>
             <button
               className="login-btn"
               style={{ fontSize: "13px", padding: "6px 10px", marginTop: "6px" }}
@@ -79,7 +210,6 @@ function TeacherPanel() {
               👥 {openSection === s.id ? "Скрыть студентов" : "Посмотреть студентов"}
             </button>
 
-            {/* === Список студентов секции === */}
             {openSection === s.id && (
               <div
                 style={{
@@ -99,23 +229,15 @@ function TeacherPanel() {
                           href={st.health_doc}
                           target="_blank"
                           rel="noreferrer"
-                          style={{
-                            color: "#0056b3",
-                            marginLeft: "6px",
-                            textDecoration: "underline",
-                          }}
+                          style={{ color: "#0056b3", marginLeft: "6px", textDecoration: "underline" }}
                         >
-                          [мед. справка]
+                          [мед. справка]
                         </a>
                       ) : (
-                        <span style={{ color: "#888", marginLeft: "6px" }}>
-                          нет справки
-                        </span>
+                        <span style={{ color: "#888", marginLeft: "6px" }}>нет справки</span>
                       )}
                       {st.status && (
-                        <span style={{ color: "#aaa", marginLeft: "6px" }}>
-                          ({st.status})
-                        </span>
+                        <span style={{ color: "#aaa", marginLeft: "6px" }}>({st.status})</span>
                       )}
                     </div>
                   ))

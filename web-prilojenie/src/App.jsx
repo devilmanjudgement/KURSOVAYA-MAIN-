@@ -10,6 +10,7 @@ import Schedule from './Schedule';
 import ScheduleEdit from './ScheduleEdit';
 import SearchPage from './SearchPage';
 import SectionsList from './SectionsList';
+import Chat from './Chat';
 
 function App() {
   return (
@@ -26,6 +27,7 @@ function App() {
         <Route path="/schedule/edit" element={<ScheduleEdit />} />
         <Route path="/search" element={<SearchPage />} />
         <Route path="/sections" element={<SectionsList />} />
+        <Route path="/chat" element={<Chat />} />
       </Routes>
     </BrowserRouter>
   );
