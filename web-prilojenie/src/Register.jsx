@@ -19,7 +19,7 @@ function Register() {
     if (!payload.name || !payload.login || !payload.password)
       return alert("Заполните все поля!");
 
-    fetch('http://localhost:5000/api/register', {
+    fetch('/api/register', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)

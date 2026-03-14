@@ -13,7 +13,7 @@ function Section() {
     const stored = localStorage.getItem("user");
     if (stored) setUser(JSON.parse(stored));
 
-    fetch(`http://localhost:5000/api/sections/${id}`)
+    fetch(`/api/sections/${id}`)
       .then((r) => (r.ok ? r.json() : null))
       .then(setSection)
       .catch(() => setSection(null));
@@ -32,7 +32,7 @@ function Section() {
       docType: "auto",
     };
 
-    fetch("http://localhost:5000/api/bookings", {
+    fetch("/api/bookings", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),

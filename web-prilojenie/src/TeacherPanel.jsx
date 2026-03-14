@@ -13,8 +13,8 @@ function TeacherPanel() {
   // === Загрузка данных ===
   const loadData = () => {
     Promise.all([
-      fetch("http://localhost:5000/api/sections").then((r) => r.json()),
-      fetch(`http://localhost:5000/api/teacher/${user.id}/bookings`).then((r) =>
+      fetch("/api/sections").then((r) => r.json()),
+      fetch(`/api/teacher/${user.id}/bookings`).then((r) =>
         r.ok ? r.json() : []
       ),
     ])
@@ -35,7 +35,7 @@ function TeacherPanel() {
       return;
     }
     setOpenSection(sectionId);
-    fetch(`http://localhost:5000/api/sections/${sectionId}/enrolled`)
+    fetch(`/api/sections/${sectionId}/enrolled`)
       .then((r) => r.json())
       .then(setStudents)
       .catch(() => setStudents([]));
@@ -43,7 +43,7 @@ function TeacherPanel() {
 
   // === Изменение статуса заявки ===
   const changeStatus = (id, status) => {
-    fetch(`http://localhost:5000/api/bookings/${id}/status`, {
+    fetch(`/api/bookings/${id}/status`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status }),

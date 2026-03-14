@@ -5,7 +5,7 @@ function TeacherBookings({ coach }) {
   const [requests, setRequests] = useState([]);
 
   useEffect(() => {
-    fetch(`http://localhost:5000/api/teacher/${coach}/bookings`)
+    fetch(`/api/teacher/${coach}/bookings`)
       .then(res => res.json())
       .then(setRequests)
       .catch(err => console.error(err));

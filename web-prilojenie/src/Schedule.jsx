@@ -10,7 +10,7 @@ function Schedule() {
   const user = JSON.parse(localStorage.getItem("user") || "{}");
 
   useEffect(() => {
-    fetch("http://localhost:5000/api/schedule")
+    fetch("/api/schedule")
       .then((res) => res.json())
       .then(setSchedule)
       .catch((err) => console.error("Ошибка загрузки:", err));

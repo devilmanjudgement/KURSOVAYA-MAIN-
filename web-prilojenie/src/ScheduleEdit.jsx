@@ -13,8 +13,8 @@ function ScheduleEdit() {
 
   const loadData = () => {
     Promise.all([
-      fetch("http://localhost:5000/api/schedule").then((r) => r.json()),
-      fetch("http://localhost:5000/api/sections").then((r) => r.json()),
+      fetch("/api/schedule").then((r) => r.json()),
+      fetch("/api/sections").then((r) => r.json()),
     ])
       .then(([sched, secs]) => {
         const mine =
@@ -53,7 +53,7 @@ function ScheduleEdit() {
       alert("Заполните все поля");
       return;
     }
-    fetch(`http://localhost:5000/api/schedule/${id}`, {
+    fetch(`/api/schedule/${id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(form),
@@ -68,7 +68,7 @@ function ScheduleEdit() {
 
   const removeItem = (id) => {
     if (!window.confirm("Удалить запись из расписания?")) return;
-    fetch(`http://localhost:5000/api/schedule/${id}`, { method: "DELETE" })
+    fetch(`/api/schedule/${id}`, { method: "DELETE" })
       .then(() => setSchedule((p) => p.filter((r) => r.id !== id)))
       .catch(() => alert("Ошибка при удалении"));
   };
@@ -78,7 +78,7 @@ function ScheduleEdit() {
       alert("Заполните все поля");
       return;
     }
-    fetch("http://localhost:5000/api/schedule", {
+    fetch("/api/schedule", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(newItem),

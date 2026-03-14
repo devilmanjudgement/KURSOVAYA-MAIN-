@@ -18,7 +18,7 @@ function BookingConfirm() {
         docType: uploadType
     };
 
-    fetch('http://localhost:5000/api/bookings', {
+    fetch('/api/bookings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(bookingData)

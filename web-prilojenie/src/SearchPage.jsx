@@ -11,7 +11,7 @@ function SearchPage() {
 
   // Загружаем список секций при старте
   useEffect(() => {
-    fetch('http://localhost:5000/api/sections')
+    fetch('/api/sections')
       .then(res => res.json())
       .then(setSections)
       .catch(err => console.error('Ошибка загрузки секций:', err));

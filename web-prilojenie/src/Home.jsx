@@ -14,7 +14,7 @@ function Home() {
     if (stored) setUser(JSON.parse(stored));
     else setUser({ name: "Гость", role: null });
 
-    fetch("http://localhost:5000/api/sections")
+    fetch("/api/sections")
       .then((res) => res.json())
       .then(setSections)
       .catch(() => alert("Ошибка загрузки секций!"));

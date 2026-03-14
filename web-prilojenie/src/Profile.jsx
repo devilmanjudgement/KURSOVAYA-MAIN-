@@ -18,7 +18,7 @@ function Profile() {
   useEffect(() => {
     if (user.role === "student") {
       const safe = encodeURIComponent(user.name);
-      fetch(`http://localhost:5000/api/student/${safe}/enrollments`)
+      fetch(`/api/student/${safe}/enrollments`)
         .then((r) => r.json())
         .then(setEnrollments)
         .catch(() => setEnrollments([]));
@@ -34,7 +34,7 @@ function Profile() {
     if (!newAvatar) return alert("Выберите файл");
     const fd = new FormData();
     fd.append("avatar", newAvatar);
-    fetch(`http://localhost:5000/api/profile/${user.id}`, { method: "PUT", body: fd })
+    fetch(`/api/profile/${user.id}`, { method: "PUT", body: fd })
       .then((r) => r.json())
       .then((d) => {
         if (d.success) {
@@ -49,7 +49,7 @@ function Profile() {
     if (!docFile) return alert("Файл не выбран");
     const fd = new FormData();
     fd.append("file", docFile);
-    fetch(`http://localhost:5000/api/student/${user.id}/healthdoc`, {
+    fetch(`/api/student/${user.id}/healthdoc`, {
       method: "POST",
       body: fd,
     })
@@ -60,14 +60,14 @@ function Profile() {
 
   const cancelBooking = (id) => {
     if (!window.confirm("Отменить заявку?")) return;
-    fetch(`http://localhost:5000/api/bookings/${id}`, { method: "DELETE" })
+    fetch(`/api/bookings/${id}`, { method: "DELETE" })
       .then((r) => r.json())
       .then((d) => d.success && setEnrollments((prev) => prev.filter((x) => x.bookingId !== id)));
   };
 
   const changePassword = () => {
     if (!oldPass || !newPass) return alert("Введите старый и новый пароли");
-    fetch(`http://localhost:5000/api/profile/${user.id}/password`, {
+    fetch(`/api/profile/${user.id}/password`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ oldPassword: oldPass, newPassword: newPass }),

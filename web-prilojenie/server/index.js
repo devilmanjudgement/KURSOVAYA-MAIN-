@@ -11,7 +11,7 @@ const Database = require("better-sqlite3");
 
 const db = new Database("kgusport.db");
 const app = express();
-const PORT = 5000;
+const PORT = 3001;
 const BASE_URL = `http://localhost:${PORT}`;
 const IMG_DIR = path.join(__dirname, "images");
 if (!fs.existsSync(IMG_DIR)) fs.mkdirSync(IMG_DIR, { recursive: true });

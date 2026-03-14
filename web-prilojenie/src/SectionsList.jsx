@@ -8,7 +8,7 @@ function SectionsList() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    fetch("http://localhost:5000/api/sections")
+    fetch("/api/sections")
       .then((res) => res.json())
       .then(setSections)
       .catch(() => alert("Ошибка загрузки секций!"));
