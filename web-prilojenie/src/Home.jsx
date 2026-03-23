@@ -100,8 +100,9 @@ function Home() {
           </div>
         )}
 
-        {/* Секции */}
-        <div className="sections-grid" style={{ padding: "20px" }}>
+        {/* Секции — скроллируемый блок */}
+        <div style={{ flex: 1, overflowY: "auto" }}>
+        <div className="sections-grid" style={{ padding: "14px 14px 0" }}>
           {!fetchError && filtered.length === 0 && sections.length === 0 && (
             <div style={{ gridColumn: "1/-1", textAlign: "center", color: "#aaa", marginTop: "20px" }}>
               <div style={{ fontSize: "40px" }}>🏟️</div>
@@ -171,6 +172,7 @@ function Home() {
               </div>
             </div>
           ))}
+        </div>
         </div>
 
         <Navbar />

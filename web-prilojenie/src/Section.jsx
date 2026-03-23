@@ -3,20 +3,24 @@ import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, MapPin, User } from "lucide-react";
 import "./App.css";
 
+const PLACEHOLDER = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='70' height='70'%3E%3Crect width='70' height='70' rx='10' fill='%23e5e7eb'/%3E%3Ctext x='35' y='44' font-size='28' text-anchor='middle'%3E🏅%3C/text%3E%3C/svg%3E";
+
 function Section() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [section, setSection] = useState(null);
   const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState(false);
 
   useEffect(() => {
     const stored = localStorage.getItem("user");
     if (stored) setUser(JSON.parse(stored));
 
-    fetch(`/api/sections/${id}`)
-      .then((r) => (r.ok ? r.json() : null))
-      .then(setSection)
-      .catch(() => setSection(null));
+    fetch("/api/sections/" + id)
+      .then((r) => { if (!r.ok) throw new Error("not found"); return r.json(); })
+      .then((data) => { setSection(data); setLoading(false); })
+      .catch(() => { setFetchError(true); setLoading(false); });
   }, [id]);
 
   const handleBooking = () => {
@@ -47,11 +51,25 @@ function Section() {
       .catch(() => alert("Сервер недоступен"));
   };
 
-  if (!section)
+  if (loading)
     return (
       <div className="mobile-wrapper">
-        <div className="mobile-screen" style={{ textAlign: "center" }}>
-          <p>Загрузка...</p>
+        <div className="mobile-screen" style={{ display: "flex", justifyContent: "center", alignItems: "center" }}>
+          <p style={{ color: "#aaa" }}>Загрузка...</p>
+        </div>
+      </div>
+    );
+
+  if (fetchError || !section)
+    return (
+      <div className="mobile-wrapper">
+        <div className="mobile-screen" style={{ display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", textAlign: "center", padding: "40px" }}>
+          <div style={{ fontSize: "48px", marginBottom: "12px" }}>😕</div>
+          <h3 style={{ color: "#555", marginBottom: "8px" }}>Секция не найдена</h3>
+          <p style={{ color: "#aaa", fontSize: "13px", marginBottom: "20px" }}>Возможно, она была удалена или ещё не существует</p>
+          <button className="login-btn" style={{ width: "auto", padding: "10px 24px" }} onClick={() => navigate(-1)}>
+            ← Назад
+          </button>
         </div>
       </div>
     );
@@ -80,18 +98,12 @@ function Section() {
         >
           <div style={{ display: "flex", justifyContent: "space-between" }}>
             <h1 style={{ margin: 0 }}>{section.title}</h1>
-            {section.image && (
-              <img
-                src={section.image}
-                alt={section.title}
-                style={{
-                  width: "70px",
-                  height: "70px",
-                  borderRadius: "12px",
-                  objectFit: "cover",
-                }}
-              />
-            )}
+            <img
+              src={section.image || PLACEHOLDER}
+              alt={section.title}
+              onError={(e) => { e.target.src = PLACEHOLDER; }}
+              style={{ width: "70px", height: "70px", borderRadius: "12px", objectFit: "cover" }}
+            />
           </div>
           <div style={{ fontSize: "14px", marginTop: "10px" }}>
             <MapPin size={14} /> {section.place}
@@ -103,8 +115,7 @@ function Section() {
         <div style={{ padding: "0 20px" }}>
           <p><b>Описание:</b> {section.description || "Описание отсутствует"}</p>
           <p>
-            <b>Занято:</b> {section.students_count || 0} /{" "}
-            {section.max_students || 20}
+            <b>Занято:</b> {section.students_count || 0} / {section.max_students || 20}
           </p>
 
           <div
@@ -123,22 +134,11 @@ function Section() {
               <img
                 src={section.coach_avatar}
                 alt="coach"
-                style={{
-                  width: "60px",
-                  height: "60px",
-                  borderRadius: "50%",
-                  objectFit: "cover",
-                }}
+                style={{ width: "60px", height: "60px", borderRadius: "50%", objectFit: "cover" }}
+                onError={(e) => { e.target.src = PLACEHOLDER; }}
               />
             ) : (
-              <div
-                style={{
-                  width: "60px",
-                  height: "60px",
-                  borderRadius: "50%",
-                  background: "#ddd",
-                }}
-              />
+              <div style={{ width: "60px", height: "60px", borderRadius: "50%", background: "#ddd" }} />
             )}
             <div>
               <p style={{ margin: 0, fontWeight: 600 }}>Тренер:</p>
