@@ -1,0 +1,369 @@
+import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+
+const TABS = ["Статистика", "Пользователи", "Секции", "Бронирования", "Логи"];
+
+function AdminPanel() {
+  const navigate = useNavigate();
+  const [tab, setTab] = useState(0);
+  const [stats, setStats] = useState(null);
+  const [users, setUsers] = useState([]);
+  const [sections, setSections] = useState([]);
+  const [bookings, setBookings] = useState([]);
+  const [logs, setLogs] = useState([]);
+  const [search, setSearch] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const user = JSON.parse(localStorage.getItem("user") || "{}");
+
+  useEffect(() => {
+    if (!user.id || user.role !== "admin") {
+      navigate("/");
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchAll();
+  }, []);
+
+  const fetchAll = async () => {
+    setLoading(true);
+    try {
+      const [s, u, sec, b, l] = await Promise.all([
+        fetch("/api/admin/stats").then((r) => r.json()),
+        fetch("/api/admin/users").then((r) => r.json()),
+        fetch("/api/sections").then((r) => r.json()),
+        fetch("/api/admin/bookings").then((r) => r.json()),
+        fetch("/api/admin/logs").then((r) => r.json()),
+      ]);
+      setStats(s);
+      setUsers(u);
+      setSections(sec);
+      setBookings(b);
+      setLogs(l);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const deleteUser = async (id) => {
+    if (!confirm("Удалить пользователя?")) return;
+    await fetch(`/api/admin/users/${id}`, { method: "DELETE" });
+    setUsers((u) => u.filter((x) => x.id !== id));
+  };
+
+  const deleteSection = async (id) => {
+    if (!confirm("Удалить секцию?")) return;
+    await fetch(`/api/sections/${id}`, { method: "DELETE" });
+    setSections((s) => s.filter((x) => x.id !== id));
+  };
+
+  const deleteBooking = async (id) => {
+    if (!confirm("Удалить запись?")) return;
+    await fetch(`/api/admin/bookings/${id}`, { method: "DELETE" });
+    setBookings((b) => b.filter((x) => x.bookingId !== id));
+  };
+
+  const logout = () => {
+    localStorage.removeItem("user");
+    navigate("/");
+  };
+
+  const badge = (role) => {
+    const map = { admin: ["#7c3aed", "#ede9fe"], coach: ["#0056b3", "#e8f0fe"], student: ["#15803d", "#dcfce7"] };
+    const labels = { admin: "Админ", coach: "Тренер", student: "Студент" };
+    const [bg, light] = map[role] || ["#666", "#eee"];
+    return (
+      <span style={{ background: light, color: bg, borderRadius: "6px", padding: "2px 8px", fontSize: "11px", fontWeight: 700 }}>
+        {labels[role] || role}
+      </span>
+    );
+  };
+
+  const statusColor = { pending: "#f59e0b", approved: "#16a34a", cancelled: "#dc2626" };
+  const statusLabel = { pending: "Ожидание", approved: "Принят", cancelled: "Отменён" };
+
+  const filteredUsers = users.filter(
+    (u) =>
+      u.name?.toLowerCase().includes(search.toLowerCase()) ||
+      u.login?.toLowerCase().includes(search.toLowerCase())
+  );
+
+  const card = (content, style = {}) => (
+    <div style={{
+      background: "#fff", borderRadius: "12px", padding: "16px",
+      boxShadow: "0 1px 4px rgba(0,0,0,0.08)", marginBottom: "10px", ...style,
+    }}>
+      {content}
+    </div>
+  );
+
+  return (
+    <div style={{ minHeight: "100vh", background: "#f1f5f9", fontFamily: "Inter, system-ui, sans-serif" }}>
+      {/* Header */}
+      <div style={{
+        background: "#0056b3", color: "#fff", padding: "16px 24px",
+        display: "flex", alignItems: "center", justifyContent: "space-between",
+        boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
+      }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+          <span style={{ fontSize: "24px" }}>🏛️</span>
+          <div>
+            <div style={{ fontWeight: 800, fontSize: "18px", letterSpacing: "0.3px" }}>КГУ СПОРТ</div>
+            <div style={{ fontSize: "12px", opacity: 0.8 }}>Панель администратора</div>
+          </div>
+        </div>
+        <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+          <span style={{ fontSize: "13px", opacity: 0.85 }}>👤 {user.name || "Администратор"}</span>
+          <button onClick={logout} style={{
+            background: "rgba(255,255,255,0.2)", border: "none", color: "#fff",
+            borderRadius: "8px", padding: "6px 14px", cursor: "pointer", fontSize: "13px",
+          }}>
+            Выйти
+          </button>
+        </div>
+      </div>
+
+      {/* Tabs */}
+      <div style={{
+        background: "#fff", display: "flex", gap: "2px", padding: "0 24px",
+        borderBottom: "1.5px solid #e5e7eb", overflowX: "auto",
+      }}>
+        {TABS.map((t, i) => (
+          <button key={i} onClick={() => setTab(i)} style={{
+            background: "transparent", border: "none", padding: "14px 18px",
+            cursor: "pointer", fontSize: "14px", fontWeight: tab === i ? 700 : 400,
+            color: tab === i ? "#0056b3" : "#6b7280",
+            borderBottom: tab === i ? "2.5px solid #0056b3" : "2.5px solid transparent",
+            whiteSpace: "nowrap",
+          }}>
+            {t}
+          </button>
+        ))}
+      </div>
+
+      <div style={{ maxWidth: "1200px", margin: "0 auto", padding: "20px 24px" }}>
+        {loading && (
+          <div style={{ textAlign: "center", padding: "40px", color: "#6b7280" }}>Загрузка...</div>
+        )}
+
+        {/* ── СТАТИСТИКА ── */}
+        {!loading && tab === 0 && stats && (
+          <>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: "14px", marginBottom: "20px" }}>
+              {[
+                { label: "Всего пользователей", value: stats.totalUsers, icon: "👥", color: "#0056b3" },
+                { label: "Студенты", value: stats.students, icon: "🎓", color: "#15803d" },
+                { label: "Тренеры", value: stats.coaches, icon: "🏅", color: "#7c3aed" },
+                { label: "Секции", value: stats.sections, icon: "🏟️", color: "#d97706" },
+                { label: "Бронирования", value: stats.bookings, icon: "📋", color: "#0891b2" },
+                { label: "Сообщений", value: stats.messages, icon: "💬", color: "#e11d48" },
+              ].map((s) => (
+                <div key={s.label} style={{
+                  background: "#fff", borderRadius: "12px", padding: "18px",
+                  boxShadow: "0 1px 4px rgba(0,0,0,0.07)",
+                  borderLeft: `4px solid ${s.color}`,
+                }}>
+                  <div style={{ fontSize: "26px", marginBottom: "6px" }}>{s.icon}</div>
+                  <div style={{ fontSize: "28px", fontWeight: 800, color: s.color }}>{s.value}</div>
+                  <div style={{ fontSize: "12px", color: "#6b7280", marginTop: "2px" }}>{s.label}</div>
+                </div>
+              ))}
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px" }}>
+              {card(
+                <>
+                  <div style={{ fontWeight: 700, marginBottom: "12px", color: "#374151" }}>📊 Статусы бронирований</div>
+                  {[
+                    { label: "Ожидают", val: stats.pending, color: "#f59e0b" },
+                    { label: "Принято", val: stats.approved, color: "#16a34a" },
+                    { label: "Отменено", val: stats.cancelled, color: "#dc2626" },
+                  ].map((r) => (
+                    <div key={r.label} style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px" }}>
+                      <span style={{ fontSize: "13px", color: "#6b7280" }}>{r.label}</span>
+                      <span style={{ fontWeight: 700, color: r.color }}>{r.val}</span>
+                    </div>
+                  ))}
+                </>
+              )}
+              {card(
+                <>
+                  <div style={{ fontWeight: 700, marginBottom: "12px", color: "#374151" }}>📅 Расписание</div>
+                  <div style={{ fontSize: "13px", color: "#6b7280" }}>Записей в расписании:</div>
+                  <div style={{ fontSize: "32px", fontWeight: 800, color: "#0056b3", marginTop: "6px" }}>{stats.scheduleEntries}</div>
+                </>
+              )}
+            </div>
+          </>
+        )}
+
+        {/* ── ПОЛЬЗОВАТЕЛИ ── */}
+        {!loading && tab === 1 && (
+          <>
+            <div style={{ display: "flex", gap: "12px", marginBottom: "16px", alignItems: "center" }}>
+              <input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="🔍 Поиск по имени или логину..."
+                style={{
+                  flex: 1, padding: "10px 14px", borderRadius: "10px",
+                  border: "1.5px solid #e5e7eb", fontSize: "14px", outline: "none",
+                }}
+              />
+              <span style={{ fontSize: "13px", color: "#6b7280" }}>{filteredUsers.length} чел.</span>
+            </div>
+
+            <div style={{ background: "#fff", borderRadius: "12px", overflow: "hidden", boxShadow: "0 1px 4px rgba(0,0,0,0.07)" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                <thead>
+                  <tr style={{ background: "#f8fafc" }}>
+                    {["ID", "ФИО", "Логин", "Роль", "Группа", ""].map((h) => (
+                      <th key={h} style={{ padding: "12px 16px", textAlign: "left", fontSize: "12px",
+                        fontWeight: 700, color: "#6b7280", textTransform: "uppercase",
+                        borderBottom: "1px solid #e5e7eb" }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredUsers.map((u) => (
+                    <tr key={u.id} style={{ borderBottom: "1px solid #f3f4f6" }}>
+                      <td style={{ padding: "12px 16px", fontSize: "13px", color: "#9ca3af" }}>{u.id}</td>
+                      <td style={{ padding: "12px 16px", fontSize: "14px", fontWeight: 600, color: "#111827" }}>
+                        {u.avatar && <img src={u.avatar} alt="" style={{ width: 24, height: 24, borderRadius: "50%", marginRight: 8, verticalAlign: "middle" }} />}
+                        {u.name}
+                      </td>
+                      <td style={{ padding: "12px 16px", fontSize: "13px", color: "#6b7280" }}>{u.login}</td>
+                      <td style={{ padding: "12px 16px" }}>{badge(u.role)}</td>
+                      <td style={{ padding: "12px 16px", fontSize: "13px", color: "#6b7280" }}>{u.group_name || "—"}</td>
+                      <td style={{ padding: "12px 16px" }}>
+                        {u.role !== "admin" && (
+                          <button onClick={() => deleteUser(u.id)} style={{
+                            background: "#fff0f0", border: "1px solid #fca5a5", color: "#dc2626",
+                            borderRadius: "6px", padding: "4px 10px", fontSize: "12px", cursor: "pointer",
+                          }}>
+                            Удалить
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
+        )}
+
+        {/* ── СЕКЦИИ ── */}
+        {!loading && tab === 2 && (
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "14px" }}>
+            {sections.map((s) => (
+              <div key={s.id} style={{
+                background: "#fff", borderRadius: "12px", overflow: "hidden",
+                boxShadow: "0 1px 4px rgba(0,0,0,0.07)",
+                borderTop: `4px solid ${s.color || "#0056b3"}`,
+              }}>
+                {s.image && <img src={s.image} alt={s.title} style={{ width: "100%", height: "120px", objectFit: "cover" }} />}
+                <div style={{ padding: "14px" }}>
+                  <div style={{ fontWeight: 700, fontSize: "15px", color: "#111827", marginBottom: "4px" }}>{s.title}</div>
+                  <div style={{ fontSize: "12px", color: "#6b7280", marginBottom: "4px" }}>📍 {s.place || "—"}</div>
+                  <div style={{ fontSize: "12px", color: "#6b7280", marginBottom: "10px" }}>🏅 {s.coach_name || "—"}</div>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <span style={{ fontSize: "12px", color: "#6b7280" }}>
+                      👥 {s.students_count || 0} / {s.max_students}
+                    </span>
+                    <button onClick={() => deleteSection(s.id)} style={{
+                      background: "#fff0f0", border: "1px solid #fca5a5", color: "#dc2626",
+                      borderRadius: "6px", padding: "4px 10px", fontSize: "12px", cursor: "pointer",
+                    }}>
+                      Удалить
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* ── БРОНИРОВАНИЯ ── */}
+        {!loading && tab === 3 && (
+          <div style={{ background: "#fff", borderRadius: "12px", overflow: "hidden", boxShadow: "0 1px 4px rgba(0,0,0,0.07)" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+              <thead>
+                <tr style={{ background: "#f8fafc" }}>
+                  {["#", "Студент", "Секция", "Дата", "Статус", ""].map((h) => (
+                    <th key={h} style={{ padding: "12px 16px", textAlign: "left", fontSize: "12px",
+                      fontWeight: 700, color: "#6b7280", textTransform: "uppercase",
+                      borderBottom: "1px solid #e5e7eb" }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {bookings.map((b) => (
+                  <tr key={b.bookingId} style={{ borderBottom: "1px solid #f3f4f6" }}>
+                    <td style={{ padding: "12px 16px", fontSize: "13px", color: "#9ca3af" }}>{b.bookingId}</td>
+                    <td style={{ padding: "12px 16px", fontSize: "14px", color: "#111827" }}>{b.user}</td>
+                    <td style={{ padding: "12px 16px", fontSize: "13px", color: "#6b7280" }}>{b.sectionId}</td>
+                    <td style={{ padding: "12px 16px", fontSize: "13px", color: "#6b7280" }}>{b.date || "—"}</td>
+                    <td style={{ padding: "12px 16px" }}>
+                      <span style={{
+                        background: statusColor[b.status] + "22",
+                        color: statusColor[b.status],
+                        borderRadius: "6px", padding: "2px 8px", fontSize: "12px", fontWeight: 700,
+                      }}>
+                        {statusLabel[b.status] || b.status}
+                      </span>
+                    </td>
+                    <td style={{ padding: "12px 16px" }}>
+                      <button onClick={() => deleteBooking(b.bookingId)} style={{
+                        background: "#fff0f0", border: "1px solid #fca5a5", color: "#dc2626",
+                        borderRadius: "6px", padding: "4px 10px", fontSize: "12px", cursor: "pointer",
+                      }}>
+                        Удалить
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {/* ── ЛОГИ ── */}
+        {!loading && tab === 4 && (
+          <div style={{ background: "#111827", borderRadius: "12px", padding: "16px", boxShadow: "0 1px 4px rgba(0,0,0,0.2)" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
+              <span style={{ color: "#9ca3af", fontSize: "13px", fontWeight: 700 }}>ЖУРНАЛ БЕЗОПАСНОСТИ</span>
+              <button onClick={fetchAll} style={{
+                background: "#1f2937", border: "1px solid #374151", color: "#9ca3af",
+                borderRadius: "6px", padding: "4px 10px", fontSize: "12px", cursor: "pointer",
+              }}>
+                ↺ Обновить
+              </button>
+            </div>
+            <div style={{ fontFamily: "monospace", fontSize: "12px", maxHeight: "500px", overflowY: "auto" }}>
+              {logs.length === 0 ? (
+                <span style={{ color: "#6b7280" }}>Нет записей</span>
+              ) : logs.map((l, i) => (
+                <div key={i} style={{
+                  padding: "5px 8px", borderRadius: "6px", marginBottom: "3px",
+                  background: l.level === "WARN" ? "#7c2d1222" : l.level === "ERROR" ? "#7f1d1d33" : "#1f2937",
+                  color: l.level === "WARN" ? "#fbbf24" : l.level === "ERROR" ? "#f87171" : "#6ee7b7",
+                }}>
+                  <span style={{ color: "#6b7280", marginRight: "10px" }}>{l.ts}</span>
+                  <span style={{ marginRight: "8px", fontWeight: 700 }}>[{l.level}]</span>
+                  {l.ip && <span style={{ color: "#818cf8", marginRight: "8px" }}>{l.ip}</span>}
+                  {l.message}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+export default AdminPanel;

@@ -11,6 +11,7 @@ import ScheduleEdit from './ScheduleEdit';
 import SearchPage from './SearchPage';
 import SectionsList from './SectionsList';
 import Chat from './Chat';
+import AdminPanel from './AdminPanel';
 
 function App() {
   return (
@@ -28,6 +29,7 @@ function App() {
         <Route path="/search" element={<SearchPage />} />
         <Route path="/sections" element={<SectionsList />} />
         <Route path="/chat" element={<Chat />} />
+        <Route path="/admin" element={<AdminPanel />} />
       </Routes>
     </BrowserRouter>
   );

@@ -1,5 +1,6 @@
 /**
  * КГУ СПОРТ — сервер
+ * Защита: параметризованные запросы, rate-limiting, security headers, input sanitization
  */
 
 const express = require("express");
@@ -16,8 +17,76 @@ const BASE_URL = `http://localhost:${PORT}`;
 const IMG_DIR = path.join(__dirname, "images");
 if (!fs.existsSync(IMG_DIR)) fs.mkdirSync(IMG_DIR, { recursive: true });
 
+/* =========================================================
+   БЕЗОПАСНОСТЬ: Security Headers
+========================================================= */
+app.use((req, res, next) => {
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("X-Frame-Options", "DENY");
+  res.setHeader("X-XSS-Protection", "1; mode=block");
+  res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
+  next();
+});
+
+/* =========================================================
+   БЕЗОПАСНОСТЬ: Rate Limiting (in-memory)
+========================================================= */
+const rateLimitMap = new Map();
+
+function rateLimit(windowMs = 60_000, max = 30) {
+  return (req, res, next) => {
+    const ip = req.ip || req.connection.remoteAddress || "unknown";
+    const key = `${ip}:${req.path}`;
+    const now = Date.now();
+    const entry = rateLimitMap.get(key) || { count: 0, start: now };
+
+    if (now - entry.start > windowMs) {
+      entry.count = 1;
+      entry.start = now;
+    } else {
+      entry.count++;
+    }
+    rateLimitMap.set(key, entry);
+
+    if (entry.count > max) {
+      secLog("WARN", ip, `Rate limit exceeded: ${req.path}`);
+      return res.status(429).json({ success: false, message: "Слишком много запросов. Попробуйте позже." });
+    }
+    next();
+  };
+}
+
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, val] of rateLimitMap.entries()) {
+    if (now - val.start > 120_000) rateLimitMap.delete(key);
+  }
+}, 60_000);
+
+/* =========================================================
+   БЕЗОПАСНОСТЬ: Журнал безопасности
+========================================================= */
+const securityLogs = [];
+function secLog(level, ip, message) {
+  const entry = { ts: new Date().toISOString(), level, ip, message };
+  securityLogs.unshift(entry);
+  if (securityLogs.length > 200) securityLogs.pop();
+  if (level !== "INFO") console.log(`[${level}] ${ip} — ${message}`);
+}
+
+/* =========================================================
+   БЕЗОПАСНОСТЬ: Санитизация ввода
+========================================================= */
+function sanitize(str) {
+  if (typeof str !== "string") return str;
+  return str.replace(/[<>'"`;\\]/g, "").trim().slice(0, 500);
+}
+
+/* =========================================================
+   Middleware
+========================================================= */
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: "2mb" }));
 app.use("/images", express.static(IMG_DIR));
 
 /* ---------- Multer ---------- */
@@ -29,7 +98,14 @@ const storage = multer.diskStorage({
     cb(null, file.fieldname + "_" + unique + ext);
   },
 });
-const upload = multer({ storage });
+const upload = multer({
+  storage,
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: (_, file, cb) => {
+    const ok = /image\/(jpeg|png|gif|webp)/.test(file.mimetype) || /application\/pdf/.test(file.mimetype);
+    cb(null, ok);
+  },
+});
 
 /* =========================================================
    Таблицы
@@ -96,29 +172,42 @@ CREATE TABLE IF NOT EXISTS messages (
 )
 `).run();
 
-try {
-  db.prepare("ALTER TABLE messages ADD COLUMN read INTEGER DEFAULT 0").run();
-} catch (_) {}
+try { db.prepare("ALTER TABLE messages ADD COLUMN read INTEGER DEFAULT 0").run(); } catch (_) {}
 
 /* =========================================================
    Авторизация / Регистрация
 ========================================================= */
-app.post("/api/login", (req, res) => {
-  const { login, password } = req.body;
+app.post("/api/login", rateLimit(60_000, 10), (req, res) => {
+  const login = sanitize(req.body.login || "");
+  const password = sanitize(req.body.password || "");
+  if (!login || !password) return res.status(400).json({ success: false, message: "Не все поля заполнены" });
+
+  const ip = req.ip || "unknown";
   const user = db.prepare("SELECT * FROM users WHERE login=? AND password=?").get(login, password);
-  if (!user) return res.status(401).json({ success: false, message: "Неверный логин или пароль" });
+  if (!user) {
+    secLog("WARN", ip, `Failed login attempt: ${login}`);
+    return res.status(401).json({ success: false, message: "Неверный логин или пароль" });
+  }
+  secLog("INFO", ip, `Login OK: ${login} (${user.role})`);
   res.json({ success: true, user });
 });
 
-app.post("/api/register", (req, res) => {
-  const { name, login, password, role, group_name } = req.body;
-  if (!name || !login || !password)
-    return res.json({ success: false, message: "Не все поля заполнены" });
-  if (role === "coach")
-    return res.json({ success: false, message: "Регистрация преподавателей недоступна" });
+app.post("/api/register", rateLimit(60_000, 5), (req, res) => {
+  const name = sanitize(req.body.name || "");
+  const login = sanitize(req.body.login || "");
+  const password = sanitize(req.body.password || "");
+  const group_name = sanitize(req.body.group_name || "");
+  const role = req.body.role;
+
+  if (!name || !login || !password) return res.json({ success: false, message: "Не все поля заполнены" });
+  if (role === "coach" || role === "admin") return res.json({ success: false, message: "Регистрация недоступна для этой роли" });
+  if (login.length < 3) return res.json({ success: false, message: "Логин — минимум 3 символа" });
+  if (password.length < 6) return res.json({ success: false, message: "Пароль — минимум 6 символов" });
+
   try {
     db.prepare("INSERT INTO users(name,login,password,role,group_name) VALUES (?,?,?,?,?)")
       .run(name, login, password, "student", group_name || null);
+    secLog("INFO", req.ip, `New student registered: ${login}`);
     res.json({ success: true });
   } catch {
     res.json({ success: false, message: "Такой логин уже существует" });
@@ -126,26 +215,67 @@ app.post("/api/register", (req, res) => {
 });
 
 /* =========================================================
+   SMS-верификация (фиктивная)
+========================================================= */
+const phoneCodes = new Map();
+
+app.post("/api/auth/send-code", rateLimit(60_000, 5), (req, res) => {
+  const phone = sanitize(req.body.phone || "").replace(/[\s\-()]/g, "");
+  if (!phone || !/^\+?\d{10,15}$/.test(phone)) {
+    return res.json({ success: false, message: "Некорректный номер телефона" });
+  }
+
+  const code = String(Math.floor(1000 + Math.random() * 9000));
+  phoneCodes.set(phone, { code, expires: Date.now() + 5 * 60_000 });
+
+  secLog("INFO", req.ip, `SMS code sent to ${phone.slice(0, 6)}****`);
+  console.log(`📱 SMS-код для ${phone}: ${code}`);
+
+  res.json({ success: true, _devCode: code });
+});
+
+app.post("/api/auth/verify-code", rateLimit(60_000, 10), (req, res) => {
+  const phone = sanitize(req.body.phone || "").replace(/[\s\-()]/g, "");
+  const code = sanitize(req.body.code || "");
+  const entry = phoneCodes.get(phone);
+
+  if (!entry) {
+    secLog("WARN", req.ip, `Code verify failed: no code for ${phone.slice(0,6)}****`);
+    return res.json({ success: false, message: "Код не найден. Запросите новый" });
+  }
+  if (Date.now() > entry.expires) {
+    phoneCodes.delete(phone);
+    return res.json({ success: false, message: "Код истёк. Запросите новый" });
+  }
+  if (entry.code !== code) {
+    secLog("WARN", req.ip, `Wrong code for ${phone.slice(0,6)}****`);
+    return res.json({ success: false, message: "Неверный код" });
+  }
+
+  phoneCodes.delete(phone);
+  res.json({ success: true });
+});
+
+/* =========================================================
    Профиль и документы
 ========================================================= */
 app.put("/api/profile/:id", upload.single("avatar"), (req, res) => {
-  const { name, group_name } = req.body;
+  const name = sanitize(req.body.name || "");
+  const group_name = sanitize(req.body.group_name || "");
   const avatar = req.file ? `${BASE_URL}/images/${req.file.filename}` : null;
-  db.prepare(`
-    UPDATE users SET 
-      name = COALESCE(?, name),
-      group_name = COALESCE(?, group_name),
-      avatar = COALESCE(?, avatar)
-    WHERE id=?`).run(name, group_name, avatar, req.params.id);
+  db.prepare(`UPDATE users SET name=COALESCE(?,name), group_name=COALESCE(?,group_name), avatar=COALESCE(?,avatar) WHERE id=?`)
+    .run(name || null, group_name || null, avatar, req.params.id);
   const user = db.prepare("SELECT * FROM users WHERE id=?").get(req.params.id);
   res.json({ success: true, user });
 });
 
 app.put("/api/profile/:id/password", (req, res) => {
-  const { oldPassword, newPassword } = req.body;
+  const oldPassword = sanitize(req.body.oldPassword || "");
+  const newPassword = sanitize(req.body.newPassword || "");
   const user = db.prepare("SELECT * FROM users WHERE id=?").get(req.params.id);
   if (!user) return res.json({ success: false, message: "Пользователь не найден" });
   if (user.password !== oldPassword) return res.json({ success: false, message: "Неверный старый пароль" });
+  if (newPassword.length < 6) return res.json({ success: false, message: "Новый пароль — минимум 6 символов" });
   db.prepare("UPDATE users SET password=? WHERE id=?").run(newPassword, req.params.id);
   res.json({ success: true });
 });
@@ -153,7 +283,7 @@ app.put("/api/profile/:id/password", (req, res) => {
 app.post("/api/student/:id/healthdoc", upload.single("file"), (req, res) => {
   if (!req.file) return res.json({ success: false, message: "Файл не загружен" });
   const url = `${BASE_URL}/images/${req.file.filename}`;
-  db.prepare("UPDATE users SET health_doc = ? WHERE id = ?").run(url, req.params.id);
+  db.prepare("UPDATE users SET health_doc=? WHERE id=?").run(url, req.params.id);
   res.json({ success: true, health_doc: url });
 });
 
@@ -163,58 +293,56 @@ app.post("/api/student/:id/healthdoc", upload.single("file"), (req, res) => {
 app.get("/api/sections", (_, res) => {
   const rows = db.prepare(`
     SELECT s.*, u.name AS coach_name, u.avatar AS coach_avatar,
-     (SELECT COUNT(*) FROM bookings b WHERE b.sectionId = s.id AND b.status='approved') AS students_count
-     FROM sections s 
-     LEFT JOIN users u ON u.id = s.coach_id`).all();
+      (SELECT COUNT(*) FROM bookings b WHERE b.sectionId=s.id AND b.status='approved') AS students_count
+    FROM sections s LEFT JOIN users u ON u.id=s.coach_id`).all();
   res.json(rows);
 });
 
 app.get("/api/sections/:id", (req, res) => {
   const s = db.prepare(`
     SELECT s.*, u.name AS coach_name, u.avatar AS coach_avatar
-      FROM sections s LEFT JOIN users u ON u.id=s.coach_id WHERE s.id=?`).get(req.params.id);
+    FROM sections s LEFT JOIN users u ON u.id=s.coach_id WHERE s.id=?`).get(req.params.id);
   if (!s) return res.status(404).json({ success: false });
-  s.students_count = db.prepare(
-    "SELECT COUNT(*) AS c FROM bookings WHERE sectionId=? AND status='approved'"
-  ).get(req.params.id).c;
+  s.students_count = db.prepare("SELECT COUNT(*) AS c FROM bookings WHERE sectionId=? AND status='approved'").get(req.params.id).c;
   res.json(s);
 });
 
 app.get("/api/sections/:id/enrolled", (req, res) => {
   const rows = db.prepare(`
     SELECT u.id, u.name, u.group_name, u.health_doc, MAX(b.status) AS status
-      FROM bookings b
-      JOIN users u ON u.name = b.user
-      WHERE b.sectionId = ?
-        AND b.status != 'cancelled'
-      GROUP BY u.id, u.name, u.group_name, u.health_doc
-  `).all(req.params.id);
+    FROM bookings b
+    JOIN users u ON u.name = b.user
+    WHERE b.sectionId=? AND b.status!='cancelled'
+    GROUP BY u.id, u.name, u.group_name, u.health_doc`).all(req.params.id);
   res.json(rows);
 });
 
 app.post("/api/sections", upload.single("image"), (req, res) => {
-  const { title, place, color, description, max_students, coach_id } = req.body;
+  const title = sanitize(req.body.title || "");
+  const place = sanitize(req.body.place || "");
+  const color = sanitize(req.body.color || "#0056b3");
+  const description = sanitize(req.body.description || "");
+  const coach_id = Number(req.body.coach_id);
+  const max_students = Number(req.body.max_students) || 20;
   if (!title || !coach_id) return res.json({ success: false, message: "Заполните обязательные поля" });
   const id = "sec_" + Date.now();
   const image = req.file ? `${BASE_URL}/images/${req.file.filename}` : null;
-  db.prepare(
-    "INSERT INTO sections(id,title,coach_id,place,color,image,description,max_students) VALUES (?,?,?,?,?,?,?,?)"
-  ).run(id, title, Number(coach_id), place || "", color || "#0056b3", image, description || "", Number(max_students) || 20);
+  db.prepare("INSERT INTO sections(id,title,coach_id,place,color,image,description,max_students) VALUES (?,?,?,?,?,?,?,?)")
+    .run(id, title, coach_id, place, color, image, description, max_students);
   res.json({ success: true, id });
 });
 
 app.put("/api/sections/:id", upload.single("image"), (req, res) => {
-  const { title, place, color, description, max_students } = req.body;
+  const title = sanitize(req.body.title || "");
+  const place = sanitize(req.body.place || "");
+  const color = sanitize(req.body.color || "");
+  const description = sanitize(req.body.description || "");
+  const max_students = req.body.max_students ? Number(req.body.max_students) : null;
   const image = req.file ? `${BASE_URL}/images/${req.file.filename}` : null;
-  db.prepare(`
-    UPDATE sections SET
-      title = COALESCE(?, title),
-      place = COALESCE(?, place),
-      color = COALESCE(?, color),
-      description = COALESCE(?, description),
-      max_students = COALESCE(?, max_students),
-      image = COALESCE(?, image)
-    WHERE id=?`).run(title, place, color, description, max_students ? Number(max_students) : null, image, req.params.id);
+  db.prepare(`UPDATE sections SET
+    title=COALESCE(?,title), place=COALESCE(?,place), color=COALESCE(?,color),
+    description=COALESCE(?,description), max_students=COALESCE(?,max_students), image=COALESCE(?,image)
+    WHERE id=?`).run(title || null, place || null, color || null, description || null, max_students, image, req.params.id);
   res.json({ success: true });
 });
 
@@ -228,14 +356,15 @@ app.delete("/api/sections/:id", (req, res) => {
 ========================================================= */
 app.post("/api/bookings", (req, res) => {
   const { sectionId, user, date, docType } = req.body;
-  db.prepare(
-    "INSERT INTO bookings(sectionId,user,date,docType,status) VALUES (?,?,?,?,?)"
-  ).run(sectionId, user, date, docType || "auto", "pending");
+  db.prepare("INSERT INTO bookings(sectionId,user,date,docType,status) VALUES (?,?,?,?,?)")
+    .run(sanitize(sectionId), sanitize(user), sanitize(date), sanitize(docType) || "auto", "pending");
   res.json({ success: true });
 });
 
 app.put("/api/bookings/:id/status", (req, res) => {
-  const { status } = req.body;
+  const status = sanitize(req.body.status || "");
+  if (!["pending", "approved", "cancelled"].includes(status))
+    return res.json({ success: false, message: "Недопустимый статус" });
   db.prepare("UPDATE bookings SET status=? WHERE bookingId=?").run(status, req.params.id);
   res.json({ success: true });
 });
@@ -250,24 +379,21 @@ app.get("/api/teacher/:id/bookings", (req, res) => {
   const sections = db.prepare("SELECT id FROM sections WHERE coach_id=?").all(id);
   if (!sections.length) return res.json([]);
   const ids = sections.map((s) => s.id);
-  const query = `
-    SELECT b.*, s.title, s.place
-      FROM bookings b JOIN sections s ON s.id=b.sectionId
-      WHERE b.sectionId IN (${ids.map(() => "?").join(",")})
-      AND b.status='pending'
-      ORDER BY b.bookingId DESC`;
-  const rows = db.prepare(query).all(...ids);
+  const rows = db.prepare(`
+    SELECT b.*, s.title, s.place FROM bookings b JOIN sections s ON s.id=b.sectionId
+    WHERE b.sectionId IN (${ids.map(() => "?").join(",")}) AND b.status='pending'
+    ORDER BY b.bookingId DESC`).all(...ids);
   res.json(rows);
 });
 
 app.get("/api/student/:name/enrollments", (req, res) => {
   const rows = db.prepare(`
-    SELECT b.bookingId, b.status, s.title, s.place, s.image, u.name AS coach 
-      FROM bookings b 
-      JOIN sections s ON s.id=b.sectionId
-      JOIN users u ON u.id=s.coach_id
-      WHERE b.user=? AND b.status!='cancelled'
-      ORDER BY b.bookingId DESC`).all(req.params.name);
+    SELECT b.bookingId, b.status, s.title, s.place, s.image, u.name AS coach
+    FROM bookings b
+    JOIN sections s ON s.id=b.sectionId
+    JOIN users u ON u.id=s.coach_id
+    WHERE b.user=? AND b.status!='cancelled'
+    ORDER BY b.bookingId DESC`).all(req.params.name);
   res.json(rows);
 });
 
@@ -277,29 +403,27 @@ app.get("/api/student/:name/enrollments", (req, res) => {
 app.get("/api/schedule", (_, res) => {
   const rows = db.prepare(`
     SELECT sc.*, s.title, s.place, s.color, s.coach_id, u.name AS coach_name
-      FROM schedule sc
-      JOIN sections s ON s.id = sc.section_id
-      LEFT JOIN users u ON u.id = s.coach_id
+    FROM schedule sc
+    JOIN sections s ON s.id=sc.section_id
+    LEFT JOIN users u ON u.id=s.coach_id
     ORDER BY sc.id`).all();
   res.json(rows);
 });
 
 app.post("/api/schedule", (req, res) => {
-  const { day_of_week, time, section_id } = req.body;
+  const day_of_week = sanitize(req.body.day_of_week || "");
+  const time = sanitize(req.body.time || "");
+  const section_id = sanitize(req.body.section_id || "");
   if (!day_of_week || !time || !section_id) return res.json({ success: false, message: "Заполните все поля" });
   const sec = db.prepare("SELECT coach_id FROM sections WHERE id=?").get(section_id);
-  const coach_id = sec ? sec.coach_id : null;
-  const result = db.prepare(
-    "INSERT INTO schedule(day_of_week,time,section_id,coach_id) VALUES (?,?,?,?)"
-  ).run(day_of_week, time, section_id, coach_id);
+  const result = db.prepare("INSERT INTO schedule(day_of_week,time,section_id,coach_id) VALUES (?,?,?,?)")
+    .run(day_of_week, time, section_id, sec?.coach_id || null);
   res.json({ success: true, id: result.lastInsertRowid });
 });
 
 app.put("/api/schedule/:id", (req, res) => {
-  const { day_of_week, time, section_id } = req.body;
-  db.prepare(
-    "UPDATE schedule SET day_of_week=?, time=?, section_id=? WHERE id=?"
-  ).run(day_of_week, time, section_id, req.params.id);
+  db.prepare("UPDATE schedule SET day_of_week=?, time=?, section_id=? WHERE id=?")
+    .run(sanitize(req.body.day_of_week), sanitize(req.body.time), sanitize(req.body.section_id), req.params.id);
   res.json({ success: true });
 });
 
@@ -309,31 +433,24 @@ app.delete("/api/schedule/:id", (req, res) => {
 });
 
 /* =========================================================
-   Мессенджер
+   Мессенджер — порядок важен: /unread до /:userId/:otherId
 ========================================================= */
 app.get("/api/users/coaches", (_, res) => {
-  const rows = db.prepare("SELECT id, name, avatar FROM users WHERE role='coach'").all();
-  res.json(rows);
+  res.json(db.prepare("SELECT id, name, avatar FROM users WHERE role='coach'").all());
 });
 
 app.get("/api/users/students", (_, res) => {
-  const rows = db.prepare("SELECT id, name, avatar FROM users WHERE role='student'").all();
-  res.json(rows);
+  res.json(db.prepare("SELECT id, name, avatar FROM users WHERE role='student'").all());
 });
 
 app.get("/api/messages/unread/:userId", (req, res) => {
-  const { userId } = req.params;
-  const row = db.prepare(
-    "SELECT COUNT(*) AS count FROM messages WHERE receiver_id=? AND read=0"
-  ).get(userId);
+  const row = db.prepare("SELECT COUNT(*) AS count FROM messages WHERE receiver_id=? AND read=0").get(req.params.userId);
   res.json({ count: row.count });
 });
 
 app.put("/api/messages/read/:userId/:senderId", (req, res) => {
-  const { userId, senderId } = req.params;
-  db.prepare(
-    "UPDATE messages SET read=1 WHERE receiver_id=? AND sender_id=?"
-  ).run(userId, senderId);
+  db.prepare("UPDATE messages SET read=1 WHERE receiver_id=? AND sender_id=?")
+    .run(req.params.userId, req.params.senderId);
   res.json({ success: true });
 });
 
@@ -341,31 +458,95 @@ app.get("/api/messages/:userId/:otherId", (req, res) => {
   const { userId, otherId } = req.params;
   const rows = db.prepare(`
     SELECT m.*, u.name AS sender_name, u.avatar AS sender_avatar
-      FROM messages m
-      JOIN users u ON u.id = m.sender_id
-      WHERE (m.sender_id=? AND m.receiver_id=?)
-         OR (m.sender_id=? AND m.receiver_id=?)
-      ORDER BY m.created_at ASC`).all(userId, otherId, otherId, userId);
+    FROM messages m JOIN users u ON u.id=m.sender_id
+    WHERE (m.sender_id=? AND m.receiver_id=?) OR (m.sender_id=? AND m.receiver_id=?)
+    ORDER BY m.created_at ASC`).all(userId, otherId, otherId, userId);
   res.json(rows);
 });
 
 app.post("/api/messages", (req, res) => {
   const { sender_id, receiver_id, text } = req.body;
   if (!sender_id || !receiver_id || !text) return res.json({ success: false });
-  const result = db.prepare(
-    "INSERT INTO messages(sender_id,receiver_id,text,read) VALUES (?,?,?,0)"
-  ).run(Number(sender_id), Number(receiver_id), text);
+  const safeText = sanitize(text).slice(0, 2000);
+  const result = db.prepare("INSERT INTO messages(sender_id,receiver_id,text,read) VALUES (?,?,?,0)")
+    .run(Number(sender_id), Number(receiver_id), safeText);
   res.json({ success: true, id: result.lastInsertRowid });
 });
 
 /* =========================================================
-   Сидинг: 3 тренера + 5 студентов
+   Панель администратора
+========================================================= */
+function requireAdmin(req, res, next) {
+  const userId = req.headers["x-admin-id"];
+  if (!userId) return res.status(403).json({ success: false, message: "Нет доступа" });
+  const user = db.prepare("SELECT * FROM users WHERE id=? AND role='admin'").get(userId);
+  if (!user) {
+    secLog("WARN", req.ip, `Unauthorized admin access attempt, user_id=${userId}`);
+    return res.status(403).json({ success: false, message: "Нет доступа" });
+  }
+  next();
+}
+
+app.get("/api/admin/stats", (req, res) => {
+  const totalUsers = db.prepare("SELECT COUNT(*) AS c FROM users").get().c;
+  const students = db.prepare("SELECT COUNT(*) AS c FROM users WHERE role='student'").get().c;
+  const coaches = db.prepare("SELECT COUNT(*) AS c FROM users WHERE role='coach'").get().c;
+  const sections = db.prepare("SELECT COUNT(*) AS c FROM sections").get().c;
+  const bookings = db.prepare("SELECT COUNT(*) AS c FROM bookings").get().c;
+  const messages = db.prepare("SELECT COUNT(*) AS c FROM messages").get().c;
+  const pending = db.prepare("SELECT COUNT(*) AS c FROM bookings WHERE status='pending'").get().c;
+  const approved = db.prepare("SELECT COUNT(*) AS c FROM bookings WHERE status='approved'").get().c;
+  const cancelled = db.prepare("SELECT COUNT(*) AS c FROM bookings WHERE status='cancelled'").get().c;
+  const scheduleEntries = db.prepare("SELECT COUNT(*) AS c FROM schedule").get().c;
+  res.json({ totalUsers, students, coaches, sections, bookings, messages, pending, approved, cancelled, scheduleEntries });
+});
+
+app.get("/api/admin/users", (req, res) => {
+  const rows = db.prepare("SELECT id, name, login, role, group_name, avatar FROM users ORDER BY id").all();
+  res.json(rows);
+});
+
+app.delete("/api/admin/users/:id", (req, res) => {
+  const target = db.prepare("SELECT role FROM users WHERE id=?").get(req.params.id);
+  if (!target) return res.json({ success: false, message: "Пользователь не найден" });
+  if (target.role === "admin") return res.json({ success: false, message: "Нельзя удалить администратора" });
+  secLog("WARN", req.ip, `Admin deleted user id=${req.params.id}`);
+  db.prepare("DELETE FROM users WHERE id=?").run(req.params.id);
+  res.json({ success: true });
+});
+
+app.get("/api/admin/bookings", (req, res) => {
+  const rows = db.prepare("SELECT * FROM bookings ORDER BY bookingId DESC").all();
+  res.json(rows);
+});
+
+app.delete("/api/admin/bookings/:id", (req, res) => {
+  db.prepare("DELETE FROM bookings WHERE bookingId=?").run(req.params.id);
+  res.json({ success: true });
+});
+
+app.get("/api/admin/logs", (req, res) => {
+  res.json(securityLogs);
+});
+
+/* =========================================================
+   Сидинг: admin + 3 тренера + 5 студентов
 ========================================================= */
 function seedUsers() {
   const count = db.prepare("SELECT COUNT(*) AS c FROM users").get().c;
-  if (count > 0) return;
+  if (count > 0) {
+    const adminExists = db.prepare("SELECT id FROM users WHERE role='admin'").get();
+    if (!adminExists) {
+      db.prepare("INSERT INTO users(name,login,password,role,group_name) VALUES (?,?,?,?,?)")
+        .run("Администратор", "admin", "admin123", "admin", null);
+      console.log("✅ Администратор добавлен в существующую БД");
+    }
+    return;
+  }
 
   const add = db.prepare("INSERT INTO users(name,login,password,role,group_name) VALUES (?,?,?,?,?)");
+
+  add.run("Администратор", "admin", "admin123", "admin", null);
 
   add.run("Иванова Марина Сергеевна", "coach1", "sport123", "coach", null);
   add.run("Петров Алексей Владимирович", "coach2", "sport123", "coach", null);
@@ -377,11 +558,11 @@ function seedUsers() {
   add.run("Морозова Елена Андреевна", "student4", "pass123", "student", "гК-33");
   add.run("Волков Алексей Игоревич", "student5", "pass123", "student", "гК-32");
 
-  console.log("✅ Пользователи созданы (3 тренера + 5 студентов)");
+  console.log("✅ БД инициализирована: admin + 3 тренера + 5 студентов");
 }
 seedUsers();
 
 /* =========================================================
    Запуск
 ========================================================= */
-app.listen(PORT, () => console.log(`🚀 Сервер запущен: ${BASE_URL}`));
+app.listen(PORT, () => console.log(`🚀 Сервер: ${BASE_URL}`));
