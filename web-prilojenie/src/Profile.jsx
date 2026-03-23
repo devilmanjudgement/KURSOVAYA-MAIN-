@@ -39,6 +39,8 @@ function Profile() {
       .then((d) => {
         if (d.success) {
           setAvatarPreview(d.user.avatar);
+          const updated = { ...user, avatar: d.user.avatar };
+          localStorage.setItem("user", JSON.stringify(updated));
           alert("Фото обновлено!");
         }
       })

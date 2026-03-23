@@ -297,7 +297,7 @@ function TeacherPanel() {
                   fontSize: "13px",
                   cursor: "pointer",
                 }}
-                onClick={() => changeStatus(b.bookingId, "rejected")}
+                onClick={() => changeStatus(b.bookingId, "cancelled")}
               >
                 <XCircle size={14} /> Отклонить
               </button>

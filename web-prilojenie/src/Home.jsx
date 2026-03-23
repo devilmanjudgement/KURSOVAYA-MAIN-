@@ -8,6 +8,7 @@ function Home() {
   const [sections, setSections] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [user, setUser] = useState(null);
+  const [fetchError, setFetchError] = useState(false);
 
   useEffect(() => {
     const stored = localStorage.getItem("user");
@@ -17,8 +18,10 @@ function Home() {
     fetch("/api/sections")
       .then((res) => res.json())
       .then(setSections)
-      .catch(() => alert("Ошибка загрузки секций!"));
+      .catch(() => setFetchError(true));
   }, []);
+
+  const PLACEHOLDER = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100'%3E%3Crect width='100' height='100' fill='%23e5e7eb'/%3E%3Ctext x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-size='40' fill='%239ca3af'%3E🏟%3C/text%3E%3C/svg%3E";
 
   if (!user) return <p>Загрузка...</p>;
 
@@ -89,8 +92,27 @@ function Home() {
           />
         </div>
 
+        {/* Ошибка загрузки */}
+        {fetchError && (
+          <div style={{ margin: "0 20px 10px", background: "#fff0f0", borderRadius: "10px",
+            padding: "10px 14px", fontSize: "13px", color: "#c00", border: "1px solid #fcc" }}>
+            ⚠️ Не удалось загрузить секции. Проверьте соединение.
+          </div>
+        )}
+
         {/* Секции */}
         <div className="sections-grid" style={{ padding: "20px" }}>
+          {!fetchError && filtered.length === 0 && sections.length === 0 && (
+            <div style={{ gridColumn: "1/-1", textAlign: "center", color: "#aaa", marginTop: "20px" }}>
+              <div style={{ fontSize: "40px" }}>🏟️</div>
+              <p>Секции ещё не созданы</p>
+            </div>
+          )}
+          {filtered.length === 0 && sections.length > 0 && (
+            <div style={{ gridColumn: "1/-1", textAlign: "center", color: "#aaa" }}>
+              Ничего не найдено
+            </div>
+          )}
           {filtered.map((section) => (
             <div
               key={section.id}
@@ -105,8 +127,9 @@ function Home() {
               }}
             >
               <img
-                src={section.image}
+                src={section.image || PLACEHOLDER}
                 alt={section.title}
+                onError={(e) => { e.target.src = PLACEHOLDER; }}
                 style={{
                   position: "absolute",
                   inset: 0,

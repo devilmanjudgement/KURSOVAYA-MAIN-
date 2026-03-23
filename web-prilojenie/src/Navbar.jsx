@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Home, Search, CalendarDays, User, MessageCircle } from 'lucide-react';
+import { Home, LayoutGrid, CalendarDays, User, MessageCircle } from 'lucide-react';
 import './App.css';
 
 function Navbar() {
@@ -32,7 +32,7 @@ function Navbar() {
       </div>
 
       <div className={`nav-item ${isActive('/sections') ? 'active' : ''}`} onClick={() => navigate('/sections')}>
-        <Home size={22} color={isActive('/sections') ? '#0056b3' : '#ccc'} />
+        <LayoutGrid size={22} color={isActive('/sections') ? '#0056b3' : '#ccc'} />
         <span>Секции</span>
       </div>
 

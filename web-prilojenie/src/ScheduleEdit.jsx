@@ -95,7 +95,7 @@ function ScheduleEdit() {
     <div className="mobile-wrapper">
       <div
         className="mobile-screen"
-        style={{ padding: "30px 25px 90px", justifyContent: "flex-start" }}
+        style={{ padding: "30px 25px 90px", justifyContent: "flex-start", overflowY: "auto" }}
       >
         <h2 style={{ textAlign: "center", marginBottom: "20px" }}>Моё расписание</h2>
 

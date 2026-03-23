@@ -60,8 +60,9 @@ function SearchPage() {
               }}
             >
               <img
-                src={sec.image}
+                src={sec.image || ''}
                 alt={sec.title}
+                onError={(e) => { e.target.style.display = 'none'; }}
                 style={{
                   position: 'absolute',
                   top: 0,
