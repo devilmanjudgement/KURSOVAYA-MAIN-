@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import Navbar from "./Navbar";
 import TeacherPanel from "./TeacherPanel";
 import { useNavigate } from "react-router-dom";
+import { User, MessageCircle } from "lucide-react";
 import { useLang } from "./contexts/LangContext";
 import { useTheme } from "./contexts/ThemeContext";
 import "./App.css";
@@ -16,6 +17,7 @@ function Profile() {
   const [newAvatar, setNewAvatar] = useState(null);
   const [docFile, setDocFile] = useState(null);
   const [enrollments, setEnrollments] = useState([]);
+  const [coachModal, setCoachModal] = useState(null);
   const [oldPass, setOldPass] = useState("");
   const [newPass, setNewPass] = useState("");
   const [newName, setNewName] = useState(user.name || "");
@@ -220,20 +222,99 @@ function Profile() {
         <input type="file" onChange={(e) => setDocFile(e.target.files[0])} />
         <button className="login-btn" onClick={uploadDoc}>{t("profile_upload_doc")}</button>
 
+        {coachModal && (
+          <div
+            onClick={() => setCoachModal(null)}
+            style={{
+              position: "fixed", inset: 0, zIndex: 200,
+              background: "rgba(0,0,0,0.55)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+            }}
+          >
+            <div
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                background: isDark ? "var(--bg-card)" : "#fff",
+                borderRadius: "18px",
+                padding: "20px",
+                width: "280px",
+                color: "var(--text-main)",
+                boxShadow: "0 8px 32px rgba(0,0,0,0.3)",
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "14px" }}>
+                {coachModal.coach_avatar ? (
+                  <img
+                    src={coachModal.coach_avatar}
+                    alt=""
+                    style={{ width: 52, height: 52, borderRadius: "50%", objectFit: "cover" }}
+                  />
+                ) : (
+                  <div style={{
+                    width: 52, height: 52, borderRadius: "50%",
+                    background: isDark ? "#313244" : "#e8eaf6",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                  }}>
+                    <User size={26} color={isDark ? "#cdd6f4" : "#555"} />
+                  </div>
+                )}
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: "15px" }}>{coachModal.coach}</div>
+                  <div style={{ fontSize: "12px", color: "var(--text-muted)" }}>📋 {coachModal.title}</div>
+                </div>
+              </div>
+
+              <button
+                onClick={() => { setCoachModal(null); navigate("/chat", { state: { contactId: coachModal.coach_id } }); }}
+                style={{
+                  width: "100%", background: "#0056b3", color: "#fff",
+                  border: "none", borderRadius: "8px", padding: "10px",
+                  cursor: "pointer", fontWeight: 600, fontSize: "14px",
+                  display: "flex", alignItems: "center", justifyContent: "center", gap: "6px",
+                  marginBottom: "8px",
+                }}
+              >
+                <MessageCircle size={16} /> {t("tp_write_message")}
+              </button>
+
+              <button
+                onClick={() => setCoachModal(null)}
+                style={{
+                  width: "100%", background: "transparent",
+                  border: `1px solid ${isDark ? "var(--border-color)" : "#ddd"}`,
+                  borderRadius: "8px", padding: "7px", cursor: "pointer",
+                  color: "var(--text-muted)", fontSize: "13px",
+                }}
+              >
+                {t("cancel")}
+              </button>
+            </div>
+          </div>
+        )}
+
         <h3>{t("profile_my_sections")}</h3>
         {enrollments.filter((s) => s.status === "approved").length ? (
           enrollments.filter((s) => s.status === "approved").map((s) => (
-            <div key={s.bookingId}
+            <div
+              key={s.bookingId}
+              onClick={() => setCoachModal(s)}
               style={{
                 background: isDark ? "var(--bg-card)" : "#fff",
                 borderRadius: 10,
                 padding: 10,
                 marginBottom: 10,
                 borderLeft: "4px solid #4caf50",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
               }}>
-              <b>{s.title}</b>
-              <br />📍 {s.place}
-              <br />👨‍🏫 {s.coach}
+              <div>
+                <b>{s.title}</b>
+                <br />📍 {s.place}
+                <br />👨‍🏫 {s.coach}
+              </div>
+              <User size={16} color="#0056b3" style={{ flexShrink: 0, marginLeft: 8 }} />
             </div>
           ))
         ) : (

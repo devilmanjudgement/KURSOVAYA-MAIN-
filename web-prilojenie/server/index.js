@@ -461,7 +461,7 @@ app.get("/api/teacher/:id/bookings", (req, res) => {
 
 app.get("/api/student/:name/enrollments", (req, res) => {
   const rows = db.prepare(`
-    SELECT b.bookingId, b.status, s.title, s.place, s.image, u.name AS coach
+    SELECT b.bookingId, b.status, s.title, s.place, s.image, u.name AS coach, u.id AS coach_id, u.avatar AS coach_avatar
     FROM bookings b
     JOIN sections s ON s.id=b.sectionId
     JOIN users u ON u.id=s.coach_id
