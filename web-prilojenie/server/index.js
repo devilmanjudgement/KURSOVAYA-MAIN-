@@ -616,7 +616,8 @@ app.get("/api/messages/:userId/:otherId", (req, res) => {
 
 app.post("/api/messages", (req, res) => {
   const { sender_id, receiver_id, text } = req.body;
-  if (!sender_id || !receiver_id || !text) return res.json({ success: false });
+  if (!sender_id || !receiver_id || !text)
+    return res.json({ success: false, message: "Не все поля заполнены" });
   const safeText = sanitize(text).slice(0, 2000);
   const result = db.prepare("INSERT INTO messages(sender_id,receiver_id,text,read) VALUES (?,?,?,0)")
     .run(Number(sender_id), Number(receiver_id), safeText);
