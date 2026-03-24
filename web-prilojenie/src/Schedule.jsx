@@ -92,8 +92,8 @@ function Schedule() {
                   }}>
                     {dayShort(day)}
                   </div>
-                  <div style={{ fontWeight: 700, fontSize: "15px", color: "#222" }}>{dayLabel(day)}</div>
-                  <div style={{ flex: 1, height: "1px", background: "#eee" }} />
+                  <div style={{ fontWeight: 700, fontSize: "15px", color: "var(--text-main)" }}>{dayLabel(day)}</div>
+                  <div style={{ flex: 1, height: "1px", background: isDark ? "#333" : "#eee" }} />
                   <div style={{ fontSize: "12px", color: "#aaa" }}>{items.length} {t("schedule_lessons")}</div>
                 </div>
 

@@ -308,7 +308,7 @@ function AdminPanel() {
                   <tr key={b.bookingId} style={{ borderBottom: "1px solid #f3f4f6" }}>
                     <td style={{ padding: "12px 16px", fontSize: "13px", color: "#9ca3af" }}>{b.bookingId}</td>
                     <td style={{ padding: "12px 16px", fontSize: "14px", color: "#111827" }}>{b.user}</td>
-                    <td style={{ padding: "12px 16px", fontSize: "13px", color: "#6b7280" }}>{b.sectionId}</td>
+                    <td style={{ padding: "12px 16px", fontSize: "13px", color: "#6b7280" }}>{b.sectionTitle || b.sectionId}</td>
                     <td style={{ padding: "12px 16px", fontSize: "13px", color: "#6b7280" }}>{b.date || "—"}</td>
                     <td style={{ padding: "12px 16px" }}>
                       <span style={{

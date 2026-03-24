@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, MapPin, User } from "lucide-react";
 import { useLang } from "./contexts/LangContext";
+import { useTheme } from "./contexts/ThemeContext";
 import "./App.css";
 
 const PLACEHOLDER = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='70' height='70'%3E%3Crect width='70' height='70' rx='10' fill='%23e5e7eb'/%3E%3Ctext x='35' y='44' font-size='28' text-anchor='middle'%3E🏅%3C/text%3E%3C/svg%3E";
@@ -10,6 +11,7 @@ function Section() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { t } = useLang();
+  const { isDark } = useTheme();
   const [section, setSection] = useState(null);
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -84,7 +86,7 @@ function Section() {
             onClick={() => navigate(-1)}
             style={{ background: "none", border: "none", cursor: "pointer", padding: "10px" }}
           >
-            <ArrowLeft size={24} color="#333" />
+            <ArrowLeft size={24} color={isDark ? "#ccc" : "#333"} />
           </button>
           <h2 style={{ flex: 1, textAlign: "center" }}>{t("section_title")}</h2>
         </div>
@@ -123,7 +125,7 @@ function Section() {
           <div
             style={{
               marginTop: "15px",
-              background: "#f5f5f5",
+              background: isDark ? "var(--bg-card)" : "#f5f5f5",
               borderRadius: "12px",
               padding: "10px 12px",
               display: "flex",

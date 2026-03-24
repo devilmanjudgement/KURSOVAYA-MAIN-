@@ -41,7 +41,7 @@ function SearchPage() {
             className="input-field"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            style={{ width: '80%', paddingLeft: '36px' }}
+            style={{ width: '100%', paddingLeft: '36px', boxSizing: 'border-box' }}
           />
         </div>
 

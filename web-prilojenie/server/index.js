@@ -634,7 +634,13 @@ app.delete("/api/admin/users/:id", requireAdmin, (req, res) => {
 });
 
 app.get("/api/admin/bookings", requireAdmin, (req, res) => {
-  const rows = db.prepare("SELECT * FROM bookings ORDER BY bookingId DESC").all();
+  const rows = db.prepare(`
+    SELECT b.bookingId, b.sectionId, b.user, b.date, b.status, b.docType,
+           s.title AS sectionTitle
+    FROM bookings b
+    LEFT JOIN sections s ON s.id = b.sectionId
+    ORDER BY b.bookingId DESC
+  `).all();
   res.json(rows);
 });
 
