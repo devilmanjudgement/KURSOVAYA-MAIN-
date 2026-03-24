@@ -493,6 +493,27 @@ app.get("/api/messages/unread/:userId", (req, res) => {
   res.json({ count: row.count });
 });
 
+app.get("/api/messages/previews/:userId", (req, res) => {
+  const uid = Number(req.params.userId);
+  const msgs = db.prepare(`
+    SELECT id, sender_id, receiver_id, text, created_at, read
+    FROM messages
+    WHERE sender_id=? OR receiver_id=?
+    ORDER BY created_at DESC`).all(uid, uid);
+
+  const previews = {};
+  for (const m of msgs) {
+    const otherId = m.sender_id === uid ? m.receiver_id : m.sender_id;
+    if (!previews[otherId]) {
+      previews[otherId] = { otherId, lastText: m.text, lastTime: m.created_at, unread: 0 };
+    }
+    if (m.receiver_id === uid && m.read === 0) {
+      previews[otherId].unread++;
+    }
+  }
+  res.json(Object.values(previews));
+});
+
 app.put("/api/messages/read/:userId/:senderId", (req, res) => {
   db.prepare("UPDATE messages SET read=1 WHERE receiver_id=? AND sender_id=?")
     .run(req.params.userId, req.params.senderId);

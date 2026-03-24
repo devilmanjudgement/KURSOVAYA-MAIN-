@@ -19,12 +19,25 @@ function Chat() {
   const { isDark } = useTheme();
 
   const [contacts, setContacts] = useState([]);
+  const [previews, setPreviews] = useState({});
   const [selected, setSelected] = useState(null);
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState("");
   const [showEmoji, setShowEmoji] = useState(false);
   const messagesEndRef = useRef(null);
   const pollRef = useRef(null);
+  const previewPollRef = useRef(null);
+
+  const loadPreviews = () => {
+    fetch(`/api/messages/previews/${user.id}`)
+      .then((r) => r.json())
+      .then((data) => {
+        const map = {};
+        data.forEach((p) => { map[p.otherId] = p; });
+        setPreviews(map);
+      })
+      .catch(() => {});
+  };
 
   useEffect(() => {
     if (!user.id) { navigate("/"); return; }
@@ -33,6 +46,9 @@ function Chat() {
       .then((r) => r.json())
       .then(setContacts)
       .catch(() => setContacts([]));
+    loadPreviews();
+    previewPollRef.current = setInterval(loadPreviews, 4000);
+    return () => clearInterval(previewPollRef.current);
   }, []);
 
   useEffect(() => {
@@ -52,7 +68,9 @@ function Chat() {
       .then((r) => r.json())
       .then((msgs) => {
         setMessages(msgs);
-        fetch(`/api/messages/read/${user.id}/${selected.id}`, { method: "PUT" }).catch(() => {});
+        fetch(`/api/messages/read/${user.id}/${selected.id}`, { method: "PUT" })
+          .then(() => loadPreviews())
+          .catch(() => {});
       })
       .catch(() => {});
   };
@@ -113,7 +131,10 @@ function Chat() {
                   {t("chat_no_contacts")}
                 </p>
               ) : (
-                contacts.map((c) => (
+                contacts.map((c) => {
+                  const prev = previews[c.id];
+                  const hasUnread = prev && prev.unread > 0;
+                  return (
                   <div
                     key={c.id}
                     onClick={() => setSelected(c)}
@@ -122,29 +143,60 @@ function Chat() {
                       padding: "14px 20px",
                       borderBottom: `1px solid ${isDark ? "var(--border-color)" : "#f0f0f0"}`,
                       cursor: "pointer",
+                      background: hasUnread
+                        ? (isDark ? "rgba(0,119,204,0.18)" : "#edf4ff")
+                        : "transparent",
+                      transition: "background 0.2s",
                     }}
                   >
-                    {c.avatar ? (
-                      <img src={c.avatar} alt={c.name}
-                        style={{ width: 44, height: 44, borderRadius: "50%", objectFit: "cover" }} />
-                    ) : (
-                      <div style={{
-                        width: 44, height: 44, borderRadius: "50%",
-                        background: "linear-gradient(135deg, #0056b3, #0077cc)",
-                        color: "#fff", display: "flex", alignItems: "center",
-                        justifyContent: "center", fontWeight: "bold", fontSize: "18px",
-                      }}>
-                        {c.name?.[0]?.toUpperCase()}
-                      </div>
-                    )}
-                    <div>
-                      <div style={{ fontWeight: 600, fontSize: "15px" }}>{c.name}</div>
-                      <div style={{ fontSize: "12px", color: "#888" }}>
-                        {user.role === "coach" ? t("chat_student_label") : t("chat_coach_label")}
-                      </div>
+                    <div style={{ position: "relative", flexShrink: 0 }}>
+                      {c.avatar ? (
+                        <img src={c.avatar} alt={c.name}
+                          style={{ width: 44, height: 44, borderRadius: "50%", objectFit: "cover" }} />
+                      ) : (
+                        <div style={{
+                          width: 44, height: 44, borderRadius: "50%",
+                          background: "linear-gradient(135deg, #0056b3, #0077cc)",
+                          color: "#fff", display: "flex", alignItems: "center",
+                          justifyContent: "center", fontWeight: "bold", fontSize: "18px",
+                        }}>
+                          {c.name?.[0]?.toUpperCase()}
+                        </div>
+                      )}
+                      {hasUnread && (
+                        <div style={{
+                          position: "absolute", top: -2, right: -2,
+                          background: "#e74c3c", color: "#fff",
+                          borderRadius: "50%", minWidth: 18, height: 18,
+                          display: "flex", alignItems: "center", justifyContent: "center",
+                          fontSize: "10px", fontWeight: 700, padding: "0 3px",
+                          boxShadow: "0 1px 4px rgba(0,0,0,0.3)",
+                        }}>
+                          {prev.unread > 9 ? "9+" : prev.unread}
+                        </div>
+                      )}
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontWeight: hasUnread ? 700 : 600, fontSize: "15px" }}>{c.name}</div>
+                      {prev?.lastText ? (
+                        <div style={{
+                          fontSize: "12px",
+                          color: hasUnread ? (isDark ? "#90b8e8" : "#0056b3") : "#888",
+                          fontWeight: hasUnread ? 600 : 400,
+                          whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+                          maxWidth: "180px",
+                        }}>
+                          {prev.lastText}
+                        </div>
+                      ) : (
+                        <div style={{ fontSize: "12px", color: "#888" }}>
+                          {user.role === "coach" ? t("chat_student_label") : t("chat_coach_label")}
+                        </div>
+                      )}
                     </div>
                   </div>
-                ))
+                  );
+                })
               )}
             </div>
             <Navbar />
