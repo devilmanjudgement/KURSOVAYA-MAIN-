@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { Send, ArrowLeft, Smile } from "lucide-react";
 import Navbar from "./Navbar";
 import { useLang } from "./contexts/LangContext";
@@ -15,6 +15,7 @@ const EMOJIS = [
 function Chat() {
   const user = JSON.parse(localStorage.getItem("user") || "{}");
   const navigate = useNavigate();
+  const location = useLocation();
   const { t } = useLang();
   const { isDark } = useTheme();
 
@@ -44,7 +45,14 @@ function Chat() {
     const endpoint = user.role === "coach" ? "/api/users/students" : "/api/users/coaches";
     fetch(endpoint)
       .then((r) => r.json())
-      .then(setContacts)
+      .then((list) => {
+        setContacts(list);
+        const targetId = location.state?.contactId;
+        if (targetId) {
+          const found = list.find((c) => c.id === targetId);
+          if (found) setSelected(found);
+        }
+      })
       .catch(() => setContacts([]));
     loadPreviews();
     previewPollRef.current = setInterval(loadPreviews, 4000);

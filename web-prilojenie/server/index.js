@@ -328,11 +328,11 @@ app.get("/api/sections/:id", (req, res) => {
 
 app.get("/api/sections/:id/enrolled", (req, res) => {
   const rows = db.prepare(`
-    SELECT u.id, u.name, u.group_name, u.health_doc, MAX(b.status) AS status
+    SELECT u.id, u.name, u.group_name, u.health_doc, u.avatar, MAX(b.status) AS status
     FROM bookings b
     JOIN users u ON u.name = b.user
     WHERE b.sectionId=? AND b.status!='cancelled'
-    GROUP BY u.id, u.name, u.group_name, u.health_doc`).all(req.params.id);
+    GROUP BY u.id, u.name, u.group_name, u.health_doc, u.avatar`).all(req.params.id);
   res.json(rows);
 });
 

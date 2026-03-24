@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
-import { Check, XCircle, PlusCircle, Trash2, User, FileText, Pencil, Save, X } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { Check, XCircle, PlusCircle, Trash2, User, FileText, Pencil, Save, X, MessageCircle } from "lucide-react";
 import { useLang } from "./contexts/LangContext";
 import { useTheme } from "./contexts/ThemeContext";
 import "./App.css";
@@ -8,6 +9,7 @@ function TeacherPanel() {
   const user = JSON.parse(localStorage.getItem("user") || "{}");
   const { t } = useLang();
   const { isDark } = useTheme();
+  const navigate = useNavigate();
 
   const card = {
     background: isDark ? "var(--bg-card)" : "#fff",
@@ -40,6 +42,7 @@ function TeacherPanel() {
   const [showForm, setShowForm] = useState(false);
   const [imageFile, setImageFile] = useState(null);
   const [studentModal, setStudentModal] = useState(null);
+  const [enrolledModal, setEnrolledModal] = useState(null);
   const [editingSection, setEditingSection] = useState(null);
   const [editForm, setEditForm] = useState({ title: "", place: "", color: "#0056b3", description: "", max_students: 20 });
   const [editImageFile, setEditImageFile] = useState(null);
@@ -250,6 +253,102 @@ function TeacherPanel() {
         </div>
       )}
 
+      {/* ── Модальное окно профиля принятого студента ── */}
+      {enrolledModal && (
+        <div
+          onClick={() => setEnrolledModal(null)}
+          style={{
+            position: "absolute", inset: 0, zIndex: 100,
+            background: "rgba(0,0,0,0.55)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            borderRadius: "34px",
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: isDark ? "var(--bg-card)" : "#fff",
+              borderRadius: "18px",
+              padding: "20px",
+              width: "280px",
+              color: "var(--text-main)",
+              boxShadow: "0 8px 32px rgba(0,0,0,0.3)",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "14px" }}>
+              {enrolledModal.avatar ? (
+                <img
+                  src={enrolledModal.avatar}
+                  alt=""
+                  style={{ width: 52, height: 52, borderRadius: "50%", objectFit: "cover" }}
+                />
+              ) : (
+                <div style={{
+                  width: 52, height: 52, borderRadius: "50%",
+                  background: isDark ? "#313244" : "#e8eaf6",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                }}>
+                  <User size={26} color={isDark ? "#cdd6f4" : "#555"} />
+                </div>
+              )}
+              <div>
+                <div style={{ fontWeight: 700, fontSize: "15px" }}>{enrolledModal.name}</div>
+                {enrolledModal.group_name && (
+                  <div style={{ fontSize: "13px", color: "var(--text-muted)" }}>
+                    {t("field_group")}: {enrolledModal.group_name}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {enrolledModal.health_doc ? (
+              <a
+                href={enrolledModal.health_doc}
+                target="_blank"
+                rel="noreferrer"
+                style={{
+                  display: "flex", alignItems: "center", gap: "6px",
+                  color: "#0056b3", fontWeight: 600, fontSize: "14px",
+                  textDecoration: "none", marginBottom: "14px",
+                }}
+              >
+                <FileText size={16} />
+                {t("tp_health_doc")}
+              </a>
+            ) : (
+              <div style={{ color: "#e57373", fontSize: "13px", marginBottom: "14px" }}>
+                ⚠️ {t("tp_no_doc")}
+              </div>
+            )}
+
+            <button
+              onClick={() => { setEnrolledModal(null); navigate("/chat", { state: { contactId: enrolledModal.id } }); }}
+              style={{
+                width: "100%", background: "#0056b3", color: "#fff",
+                border: "none", borderRadius: "8px", padding: "10px",
+                cursor: "pointer", fontWeight: 600, fontSize: "14px",
+                display: "flex", alignItems: "center", justifyContent: "center", gap: "6px",
+                marginBottom: "8px",
+              }}
+            >
+              <MessageCircle size={16} /> {t("tp_write_message")}
+            </button>
+
+            <button
+              onClick={() => setEnrolledModal(null)}
+              style={{
+                width: "100%", background: "transparent",
+                border: `1px solid ${isDark ? "var(--border-color)" : "#ddd"}`,
+                borderRadius: "8px", padding: "7px", cursor: "pointer",
+                color: "var(--text-muted)", fontSize: "13px",
+              }}
+            >
+              {t("cancel")}
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* ── Мои секции ── */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", margin: "15px 0 10px" }}>
         <h3 style={{ margin: 0 }}>{t("tp_my_sections")}</h3>
@@ -385,16 +484,24 @@ function TeacherPanel() {
             <div style={subPanel}>
               <h4 style={{ marginTop: "5px", color: "var(--text-main)" }}>{t("tp_students")}:</h4>
               {students.length > 0 ? students.map((st, i) => (
-                <div key={i} style={{ fontSize: "13px", padding: "3px 0", color: "var(--text-main)" }}>
-                  ✅ {st.name} {st.group_name ? `(${st.group_name})` : ""}
-                  {st.health_doc ? (
-                    <a href={st.health_doc} target="_blank" rel="noreferrer"
-                      style={{ color: "#0056b3", marginLeft: "6px", textDecoration: "underline" }}>
-                      [{t("tp_health_doc")}]
-                    </a>
-                  ) : (
-                    <span style={{ color: "#e57373", marginLeft: "6px" }}>{t("tp_no_doc")}</span>
-                  )}
+                <div
+                  key={i}
+                  onClick={() => setEnrolledModal(st)}
+                  style={{
+                    fontSize: "13px", padding: "7px 8px", color: "var(--text-main)",
+                    borderRadius: "8px", cursor: "pointer", display: "flex",
+                    alignItems: "center", justifyContent: "space-between",
+                    background: isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.03)",
+                    marginBottom: "4px",
+                  }}
+                >
+                  <span>
+                    ✅ {st.name} {st.group_name ? `(${st.group_name})` : ""}
+                    {!st.health_doc && (
+                      <span style={{ color: "#e57373", marginLeft: "6px" }}>{t("tp_no_doc")}</span>
+                    )}
+                  </span>
+                  <User size={14} color="#0056b3" style={{ flexShrink: 0, marginLeft: 6 }} />
                 </div>
               )) : (
                 <p style={{ color: "var(--text-muted)" }}>{t("tp_no_students_yet")}</p>
