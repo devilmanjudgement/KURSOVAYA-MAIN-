@@ -18,6 +18,7 @@ function Profile() {
   const [enrollments, setEnrollments] = useState([]);
   const [oldPass, setOldPass] = useState("");
   const [newPass, setNewPass] = useState("");
+  const [newName, setNewName] = useState(user.name || "");
 
   useEffect(() => {
     if (user.role === "student") {
@@ -69,6 +70,22 @@ function Profile() {
     fetch(`/api/bookings/${id}`, { method: "DELETE" })
       .then((r) => r.json())
       .then((d) => d.success && setEnrollments((prev) => prev.filter((x) => x.bookingId !== id)));
+  };
+
+  const updateName = () => {
+    if (!newName.trim()) return alert("Введите новое имя");
+    const fd = new FormData();
+    fd.append("name", newName.trim());
+    fetch(`/api/profile/${user.id}`, { method: "PUT", body: fd })
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.success) {
+          const updated = { ...user, name: d.user.name };
+          localStorage.setItem("user", JSON.stringify(updated));
+          alert("Имя обновлено");
+        }
+      })
+      .catch(() => alert(t("err_server_short")));
   };
 
   const changePassword = () => {
@@ -126,6 +143,31 @@ function Profile() {
           )}
           <input type="file" onChange={(e) => setNewAvatar(e.target.files[0])} />
           <button className="login-btn" onClick={updateAvatar}>{t("profile_update_photo")}</button>
+
+          <details
+            style={{
+              marginBottom: 16,
+              background: isDark ? "var(--bg-card)" : "#f5f5f5",
+              borderRadius: 10,
+              padding: "8px 12px",
+            }}
+          >
+            <summary style={{ cursor: "pointer", fontWeight: 600 }}>
+              Изменить имя
+            </summary>
+            <div style={{ marginTop: 10 }}>
+              <input
+                className="input-field"
+                placeholder="Новое имя"
+                value={newName}
+                onChange={(e) => setNewName(e.target.value)}
+              />
+              <button className="login-btn" onClick={updateName}>
+                Сохранить имя
+              </button>
+            </div>
+          </details>
+
           <TeacherPanel />
           <button
             className="login-btn"

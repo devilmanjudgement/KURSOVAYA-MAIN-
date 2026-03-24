@@ -618,13 +618,7 @@ function seedUsers() {
   add.run("Петров Алексей Владимирович", "coach2", "sport123", "coach", null);
   add.run("Сидорова Елена Николаевна", "coach3", "sport123", "coach", null);
 
-  add.run("Иванов Иван Иванович", "student1", "pass123", "student", "гК-31");
-  add.run("Петрова Анна Сергеевна", "student2", "pass123", "student", "гК-32");
-  add.run("Кузнецов Дмитрий Олегович", "student3", "pass123", "student", "гК-31");
-  add.run("Морозова Елена Андреевна", "student4", "pass123", "student", "гК-33");
-  add.run("Волков Алексей Игоревич", "student5", "pass123", "student", "гК-32");
-
-  console.log("✅ БД инициализирована: admin + 3 тренера + 5 студентов");
+  console.log("✅ БД инициализирована: admin + 3 тренера");
 }
 seedUsers();
 

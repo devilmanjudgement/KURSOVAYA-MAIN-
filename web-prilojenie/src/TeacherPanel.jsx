@@ -41,7 +41,7 @@ function TeacherPanel() {
   const [imageFile, setImageFile] = useState(null);
   const [studentModal, setStudentModal] = useState(null);
   const [editingSection, setEditingSection] = useState(null);
-  const [editForm, setEditForm] = useState({ title: "", place: "", description: "", max_students: 20 });
+  const [editForm, setEditForm] = useState({ title: "", place: "", color: "#0056b3", description: "", max_students: 20 });
   const [form, setForm] = useState({
     title: "",
     place: "",
@@ -113,13 +113,14 @@ function TeacherPanel() {
 
   const startEdit = (s) => {
     setEditingSection(s.id);
-    setEditForm({ title: s.title, place: s.place, description: s.description || "", max_students: s.max_students });
+    setEditForm({ title: s.title, place: s.place, color: s.color || "#0056b3", description: s.description || "", max_students: s.max_students });
   };
 
   const saveEdit = (id) => {
     const fd = new FormData();
     fd.append("title", editForm.title);
     fd.append("place", editForm.place);
+    fd.append("color", editForm.color);
     fd.append("description", editForm.description);
     fd.append("max_students", String(editForm.max_students));
     fetch(`/api/sections/${id}`, { method: "PUT", body: fd })
@@ -275,6 +276,15 @@ function TeacherPanel() {
             <input className="input-field" type="number" placeholder={t("tp_max_students")} value={form.max_students}
               onChange={(e) => setForm({ ...form, max_students: e.target.value })} style={{ flex: 1 }} />
           </div>
+          <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px" }}>
+            <label style={{ fontSize: "13px", color: "var(--text-muted)" }}>
+              {t("tp_section_color") || "Цвет секции"}:
+            </label>
+            <input type="color" value={form.color}
+              onChange={(e) => setForm({ ...form, color: e.target.value })}
+              style={{ width: "36px", height: "28px", border: "none", borderRadius: "6px", cursor: "pointer", padding: "2px" }} />
+            <span style={{ fontSize: "12px", color: "var(--text-muted)" }}>{form.color}</span>
+          </div>
           <div style={{ marginBottom: "10px" }}>
             <label style={{ fontSize: "13px", color: "var(--text-muted)", display: "block", marginBottom: "4px" }}>
               {t("tp_section_photo")}:
@@ -321,6 +331,15 @@ function TeacherPanel() {
               <input className="input-field" type="number" value={editForm.max_students}
                 onChange={(e) => setEditForm({ ...editForm, max_students: e.target.value })}
                 placeholder={t("tp_max_students")} style={{ marginBottom: "8px" }} />
+              <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px" }}>
+                <label style={{ fontSize: "13px", color: "var(--text-muted)" }}>
+                  {t("tp_section_color") || "Цвет секции"}:
+                </label>
+                <input type="color" value={editForm.color}
+                  onChange={(e) => setEditForm({ ...editForm, color: e.target.value })}
+                  style={{ width: "36px", height: "28px", border: "none", borderRadius: "6px", cursor: "pointer", padding: "2px" }} />
+                <span style={{ fontSize: "12px", color: "var(--text-muted)" }}>{editForm.color}</span>
+              </div>
               <div style={{ display: "flex", gap: "6px" }}>
                 <button onClick={() => saveEdit(s.id)} style={{
                   flex: 1, background: "#0056b3", color: "#fff", border: "none",
