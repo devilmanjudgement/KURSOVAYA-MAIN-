@@ -37,6 +37,10 @@ externalPort = 80
 localPort = 5000
 externalPort = 5000
 
+[[ports]]
+localPort = 5001
+externalPort = 3001
+
 [deployment]
 deploymentTarget = "vm"
 run = ["bash", "-c", "node web-prilojenie/server/index.js & cd web-prilojenie && npm run build && npx serve dist -l 5000"]

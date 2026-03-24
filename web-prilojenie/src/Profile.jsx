@@ -220,15 +220,36 @@ function Profile() {
         <input type="file" onChange={(e) => setDocFile(e.target.files[0])} />
         <button className="login-btn" onClick={uploadDoc}>{t("profile_upload_doc")}</button>
 
-        <h3>{t("profile_my_bookings")}</h3>
-        {enrollments.length ? (
-          enrollments.map((s) => (
+        <h3>{t("profile_my_sections")}</h3>
+        {enrollments.filter((s) => s.status === "approved").length ? (
+          enrollments.filter((s) => s.status === "approved").map((s) => (
             <div key={s.bookingId}
               style={{
                 background: isDark ? "var(--bg-card)" : "#fff",
                 borderRadius: 10,
                 padding: 10,
                 marginBottom: 10,
+                borderLeft: "4px solid #4caf50",
+              }}>
+              <b>{s.title}</b>
+              <br />📍 {s.place}
+              <br />👨‍🏫 {s.coach}
+            </div>
+          ))
+        ) : (
+          <p style={{ color: "#888" }}>{t("profile_no_sections")}</p>
+        )}
+
+        <h3>{t("profile_my_bookings")}</h3>
+        {enrollments.filter((s) => s.status === "pending").length ? (
+          enrollments.filter((s) => s.status === "pending").map((s) => (
+            <div key={s.bookingId}
+              style={{
+                background: isDark ? "var(--bg-card)" : "#fff",
+                borderRadius: 10,
+                padding: 10,
+                marginBottom: 10,
+                borderLeft: "4px solid #ff9800",
               }}>
               <b>{s.title}</b>
               <br />📍 {s.place}
@@ -238,14 +259,12 @@ function Profile() {
                 {t("profile_booking_status")} {statusLabel(s.status)}
               </span>
               <br />
-              {s.status !== "approved" && (
-                <button
-                  className="login-btn"
-                  style={{ background: "#f44336", marginTop: 5 }}
-                  onClick={() => cancelBooking(s.bookingId)}>
-                  {t("profile_cancel_booking")}
-                </button>
-              )}
+              <button
+                className="login-btn"
+                style={{ background: "#f44336", marginTop: 5 }}
+                onClick={() => cancelBooking(s.bookingId)}>
+                {t("profile_cancel_booking")}
+              </button>
             </div>
           ))
         ) : (
