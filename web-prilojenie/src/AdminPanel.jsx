@@ -29,15 +29,17 @@ function AdminPanel() {
     fetchAll();
   }, []);
 
+  const adminHeaders = { "x-admin-id": String(user.id) };
+
   const fetchAll = async () => {
     setLoading(true);
     try {
       const [s, u, sec, b, l] = await Promise.all([
-        fetch("/api/admin/stats").then((r) => r.json()),
-        fetch("/api/admin/users").then((r) => r.json()),
+        fetch("/api/admin/stats", { headers: adminHeaders }).then((r) => r.json()),
+        fetch("/api/admin/users", { headers: adminHeaders }).then((r) => r.json()),
         fetch("/api/sections").then((r) => r.json()),
-        fetch("/api/admin/bookings").then((r) => r.json()),
-        fetch("/api/admin/logs").then((r) => r.json()),
+        fetch("/api/admin/bookings", { headers: adminHeaders }).then((r) => r.json()),
+        fetch("/api/admin/logs", { headers: adminHeaders }).then((r) => r.json()),
       ]);
       setStats(s);
       setUsers(u);
@@ -53,7 +55,7 @@ function AdminPanel() {
 
   const deleteUser = async (id) => {
     if (!confirm(t("adm_delete_user"))) return;
-    await fetch(`/api/admin/users/${id}`, { method: "DELETE" });
+    await fetch(`/api/admin/users/${id}`, { method: "DELETE", headers: adminHeaders });
     setUsers((u) => u.filter((x) => x.id !== id));
   };
 
@@ -65,7 +67,7 @@ function AdminPanel() {
 
   const deleteBooking = async (id) => {
     if (!confirm(t("adm_delete_booking"))) return;
-    await fetch(`/api/admin/bookings/${id}`, { method: "DELETE" });
+    await fetch(`/api/admin/bookings/${id}`, { method: "DELETE", headers: adminHeaders });
     setBookings((b) => b.filter((x) => x.bookingId !== id));
   };
 

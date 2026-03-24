@@ -64,6 +64,11 @@ setInterval(() => {
 }, 60_000);
 
 /* =========================================================
+   SSE клиенты (уведомления реального времени)
+========================================================= */
+const sseClients = new Map();
+
+/* =========================================================
    БЕЗОПАСНОСТЬ: Журнал безопасности
 ========================================================= */
 const securityLogs = [];
@@ -365,7 +370,25 @@ app.put("/api/bookings/:id/status", (req, res) => {
   const status = sanitize(req.body.status || "");
   if (!["pending", "approved", "cancelled"].includes(status))
     return res.json({ success: false, message: "Недопустимый статус" });
+
+  const booking = db.prepare(`
+    SELECT b.user, s.title AS sectionTitle
+    FROM bookings b JOIN sections s ON s.id=b.sectionId
+    WHERE b.bookingId=?`).get(req.params.id);
+
   db.prepare("UPDATE bookings SET status=? WHERE bookingId=?").run(status, req.params.id);
+
+  if (booking) {
+    const student = db.prepare("SELECT id FROM users WHERE name=?").get(booking.user);
+    if (student) {
+      const client = sseClients.get(student.id);
+      if (client) {
+        const payload = JSON.stringify({ type: "booking_update", status, sectionTitle: booking.sectionTitle });
+        client.write(`data: ${payload}\n\n`);
+      }
+    }
+  }
+
   res.json({ success: true });
 });
 
@@ -438,6 +461,22 @@ app.delete("/api/schedule/:id", (req, res) => {
 });
 
 /* =========================================================
+   SSE — уведомления реального времени
+========================================================= */
+app.get("/api/events/:userId", (req, res) => {
+  const userId = Number(req.params.userId);
+  res.writeHead(200, {
+    "Content-Type": "text/event-stream",
+    "Cache-Control": "no-cache",
+    "Connection": "keep-alive",
+    "X-Accel-Buffering": "no",
+  });
+  res.write(`data: ${JSON.stringify({ type: "connected" })}\n\n`);
+  sseClients.set(userId, res);
+  req.on("close", () => sseClients.delete(userId));
+});
+
+/* =========================================================
    Мессенджер — порядок важен: /unread до /:userId/:otherId
 ========================================================= */
 app.get("/api/users/coaches", (_, res) => {
@@ -492,7 +531,7 @@ function requireAdmin(req, res, next) {
   next();
 }
 
-app.get("/api/admin/stats", (req, res) => {
+app.get("/api/admin/stats", requireAdmin, (req, res) => {
   const totalUsers = db.prepare("SELECT COUNT(*) AS c FROM users").get().c;
   const students = db.prepare("SELECT COUNT(*) AS c FROM users WHERE role='student'").get().c;
   const coaches = db.prepare("SELECT COUNT(*) AS c FROM users WHERE role='coach'").get().c;
@@ -506,12 +545,12 @@ app.get("/api/admin/stats", (req, res) => {
   res.json({ totalUsers, students, coaches, sections, bookings, messages, pending, approved, cancelled, scheduleEntries });
 });
 
-app.get("/api/admin/users", (req, res) => {
+app.get("/api/admin/users", requireAdmin, (req, res) => {
   const rows = db.prepare("SELECT id, name, login, role, group_name, avatar FROM users ORDER BY id").all();
   res.json(rows);
 });
 
-app.delete("/api/admin/users/:id", (req, res) => {
+app.delete("/api/admin/users/:id", requireAdmin, (req, res) => {
   const target = db.prepare("SELECT role FROM users WHERE id=?").get(req.params.id);
   if (!target) return res.json({ success: false, message: "Пользователь не найден" });
   if (target.role === "admin") return res.json({ success: false, message: "Нельзя удалить администратора" });
@@ -520,17 +559,17 @@ app.delete("/api/admin/users/:id", (req, res) => {
   res.json({ success: true });
 });
 
-app.get("/api/admin/bookings", (req, res) => {
+app.get("/api/admin/bookings", requireAdmin, (req, res) => {
   const rows = db.prepare("SELECT * FROM bookings ORDER BY bookingId DESC").all();
   res.json(rows);
 });
 
-app.delete("/api/admin/bookings/:id", (req, res) => {
+app.delete("/api/admin/bookings/:id", requireAdmin, (req, res) => {
   db.prepare("DELETE FROM bookings WHERE bookingId=?").run(req.params.id);
   res.json({ success: true });
 });
 
-app.get("/api/admin/logs", (req, res) => {
+app.get("/api/admin/logs", requireAdmin, (req, res) => {
   res.json(securityLogs);
 });
 
