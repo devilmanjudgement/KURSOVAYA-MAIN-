@@ -179,6 +179,18 @@ CREATE TABLE IF NOT EXISTS messages (
 
 try { db.prepare("ALTER TABLE messages ADD COLUMN read INTEGER DEFAULT 0").run(); } catch (_) {}
 
+db.prepare(`
+CREATE TABLE IF NOT EXISTS attendance (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  student_name TEXT,
+  section_id TEXT,
+  section_title TEXT,
+  coach_id INTEGER,
+  date TEXT,
+  present INTEGER DEFAULT 1
+)
+`).run();
+
 /* =========================================================
    Авторизация / Регистрация
 ========================================================= */
@@ -362,9 +374,9 @@ app.delete("/api/sections/:id", (req, res) => {
 ========================================================= */
 app.post("/api/bookings", (req, res) => {
   const { sectionId, user, date, docType } = req.body;
-  db.prepare("INSERT INTO bookings(sectionId,user,date,docType,status) VALUES (?,?,?,?,?)")
+  const result = db.prepare("INSERT INTO bookings(sectionId,user,date,docType,status) VALUES (?,?,?,?,?)")
     .run(sanitize(sectionId), sanitize(user), sanitize(date), sanitize(docType) || "auto", "pending");
-  res.json({ success: true });
+  res.json({ success: true, id: result.lastInsertRowid });
 });
 
 app.put("/api/bookings/:id/status", (req, res) => {
@@ -424,6 +436,46 @@ app.get("/api/student/:name/enrollments", (req, res) => {
     WHERE b.user=? AND b.status!='cancelled'
     ORDER BY b.bookingId DESC`).all(req.params.name);
   res.json(rows);
+});
+
+/* =========================================================
+   Посещаемость
+========================================================= */
+app.get("/api/attendance/student/:name", (req, res) => {
+  const rows = db.prepare(`
+    SELECT a.*, s.title AS section_title
+    FROM attendance a
+    LEFT JOIN sections s ON s.id=a.section_id
+    WHERE a.student_name=?
+    ORDER BY a.date DESC`).all(req.params.name);
+  res.json(rows);
+});
+
+app.get("/api/attendance/coach/:id", (req, res) => {
+  const rows = db.prepare(`
+    SELECT a.*
+    FROM attendance a
+    WHERE a.coach_id=?
+    ORDER BY a.date DESC`).all(Number(req.params.id));
+  res.json(rows);
+});
+
+app.post("/api/attendance", (req, res) => {
+  const { student_name, section_id, section_title, coach_id, date, present } = req.body;
+  if (!student_name || !section_id || !date) return res.json({ success: false, message: "Не все поля заполнены" });
+  const result = db.prepare(
+    "INSERT INTO attendance(student_name,section_id,section_title,coach_id,date,present) VALUES (?,?,?,?,?,?)"
+  ).run(
+    sanitize(student_name), sanitize(section_id),
+    sanitize(section_title || ""), Number(coach_id) || null,
+    sanitize(date), present ? 1 : 0
+  );
+  res.json({ success: true, id: result.lastInsertRowid });
+});
+
+app.delete("/api/attendance/:id", (req, res) => {
+  db.prepare("DELETE FROM attendance WHERE id=?").run(req.params.id);
+  res.json({ success: true });
 });
 
 /* =========================================================
