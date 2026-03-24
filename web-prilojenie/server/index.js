@@ -268,7 +268,7 @@ app.post("/api/auth/verify-code", rateLimit(60_000, 10), (req, res) => {
 app.put("/api/profile/:id", upload.single("avatar"), (req, res) => {
   const name = sanitize(req.body.name || "");
   const group_name = sanitize(req.body.group_name || "");
-  const avatar = req.file ? `${BASE_URL}/images/${req.file.filename}` : null;
+  const avatar = req.file ? `/images/${req.file.filename}` : null;
   db.prepare(`UPDATE users SET name=COALESCE(?,name), group_name=COALESCE(?,group_name), avatar=COALESCE(?,avatar) WHERE id=?`)
     .run(name || null, group_name || null, avatar, req.params.id);
   const user = db.prepare("SELECT * FROM users WHERE id=?").get(req.params.id);
@@ -288,7 +288,7 @@ app.put("/api/profile/:id/password", (req, res) => {
 
 app.post("/api/student/:id/healthdoc", upload.single("file"), (req, res) => {
   if (!req.file) return res.json({ success: false, message: "Файл не загружен" });
-  const url = `${BASE_URL}/images/${req.file.filename}`;
+  const url = `/images/${req.file.filename}`;
   db.prepare("UPDATE users SET health_doc=? WHERE id=?").run(url, req.params.id);
   res.json({ success: true, health_doc: url });
 });
@@ -332,7 +332,7 @@ app.post("/api/sections", upload.single("image"), (req, res) => {
   const max_students = Number(req.body.max_students) || 20;
   if (!title || !coach_id) return res.json({ success: false, message: "Заполните обязательные поля" });
   const id = "sec_" + Date.now();
-  const image = req.file ? `${BASE_URL}/images/${req.file.filename}` : null;
+  const image = req.file ? `/images/${req.file.filename}` : null;
   db.prepare("INSERT INTO sections(id,title,coach_id,place,color,image,description,max_students) VALUES (?,?,?,?,?,?,?,?)")
     .run(id, title, coach_id, place, color, image, description, max_students);
   res.json({ success: true, id });
@@ -344,7 +344,7 @@ app.put("/api/sections/:id", upload.single("image"), (req, res) => {
   const color = sanitize(req.body.color || "");
   const description = sanitize(req.body.description || "");
   const max_students = req.body.max_students ? Number(req.body.max_students) : null;
-  const image = req.file ? `${BASE_URL}/images/${req.file.filename}` : null;
+  const image = req.file ? `/images/${req.file.filename}` : null;
   db.prepare(`UPDATE sections SET
     title=COALESCE(?,title), place=COALESCE(?,place), color=COALESCE(?,color),
     description=COALESCE(?,description), max_students=COALESCE(?,max_students), image=COALESCE(?,image)

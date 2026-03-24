@@ -42,6 +42,7 @@ function TeacherPanel() {
   const [studentModal, setStudentModal] = useState(null);
   const [editingSection, setEditingSection] = useState(null);
   const [editForm, setEditForm] = useState({ title: "", place: "", color: "#0056b3", description: "", max_students: 20 });
+  const [editImageFile, setEditImageFile] = useState(null);
   const [form, setForm] = useState({
     title: "",
     place: "",
@@ -113,6 +114,7 @@ function TeacherPanel() {
 
   const startEdit = (s) => {
     setEditingSection(s.id);
+    setEditImageFile(null);
     setEditForm({ title: s.title, place: s.place, color: s.color || "#0056b3", description: s.description || "", max_students: s.max_students });
   };
 
@@ -123,10 +125,11 @@ function TeacherPanel() {
     fd.append("color", editForm.color);
     fd.append("description", editForm.description);
     fd.append("max_students", String(editForm.max_students));
+    if (editImageFile) fd.append("image", editImageFile);
     fetch(`/api/sections/${id}`, { method: "PUT", body: fd })
       .then((r) => r.json())
       .then((d) => {
-        if (d.success) { setEditingSection(null); loadData(); }
+        if (d.success) { setEditingSection(null); setEditImageFile(null); loadData(); }
         else alert(t("err_server_short"));
       })
       .catch(() => alert(t("err_server_short")));
@@ -339,6 +342,17 @@ function TeacherPanel() {
                   onChange={(e) => setEditForm({ ...editForm, color: e.target.value })}
                   style={{ width: "36px", height: "28px", border: "none", borderRadius: "6px", cursor: "pointer", padding: "2px" }} />
                 <span style={{ fontSize: "12px", color: "var(--text-muted)" }}>{editForm.color}</span>
+              </div>
+              <div style={{ marginBottom: "8px" }}>
+                <label style={{ fontSize: "13px", color: "var(--text-muted)", display: "block", marginBottom: "4px" }}>
+                  {t("tp_section_photo") || "Фото секции"}:
+                </label>
+                <input type="file" accept="image/*" onChange={(e) => setEditImageFile(e.target.files[0])} />
+                {editImageFile && (
+                  <div style={{ fontSize: "12px", color: "#4caf50", marginTop: "3px" }}>
+                    ✓ {editImageFile.name}
+                  </div>
+                )}
               </div>
               <div style={{ display: "flex", gap: "6px" }}>
                 <button onClick={() => saveEdit(s.id)} style={{
