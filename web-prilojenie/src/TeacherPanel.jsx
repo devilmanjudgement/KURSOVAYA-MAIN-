@@ -250,9 +250,6 @@ function TeacherPanel() {
           <input className="input-field" placeholder={t("tp_section_desc")} value={form.description}
             onChange={(e) => setForm({ ...form, description: e.target.value })} style={{ marginBottom: "8px" }} />
           <div style={{ display: "flex", gap: "8px", marginBottom: "8px", alignItems: "center" }}>
-            <label style={{ fontSize: "13px", color: "var(--text-muted)" }}>{t("tp_color")}:</label>
-            <input type="color" value={form.color} onChange={(e) => setForm({ ...form, color: e.target.value })}
-              style={{ width: "40px", height: "32px", border: "none", borderRadius: "6px", cursor: "pointer" }} />
             <input className="input-field" type="number" placeholder={t("tp_max_students")} value={form.max_students}
               onChange={(e) => setForm({ ...form, max_students: e.target.value })} style={{ flex: 1 }} />
           </div>

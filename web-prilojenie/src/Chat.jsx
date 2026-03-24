@@ -189,8 +189,19 @@ function Chat() {
               ) : (
                 messages.map((m) => {
                   const isMe = m.sender_id === user.id;
+                  const senderName = isMe ? (t("chat_you") || "Вы") : selected.name;
                   return (
                     <div key={m.id} style={{ display: "flex", flexDirection: "column", alignItems: isMe ? "flex-end" : "flex-start" }}>
+                      <span style={{
+                        fontSize: "11px",
+                        fontWeight: 600,
+                        color: isMe ? "#0077cc" : "#e07b00",
+                        marginBottom: "2px",
+                        paddingLeft: isMe ? 0 : "4px",
+                        paddingRight: isMe ? "4px" : 0,
+                      }}>
+                        {senderName}
+                      </span>
                       <div style={{
                         background: isMe ? "linear-gradient(135deg, #0056b3, #0077cc)" : (isDark ? "var(--bg-card)" : "#fff"),
                         color: isMe ? "#fff" : "var(--text-main)",

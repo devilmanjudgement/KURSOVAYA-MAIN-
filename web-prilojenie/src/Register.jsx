@@ -176,12 +176,8 @@ function Register() {
             />
 
             <div style={{ position: "relative", marginBottom: "10px" }}>
-              <span style={{
-                position: "absolute", left: "14px", top: "50%", transform: "translateY(-50%)",
-                fontSize: "14px", color: "#888",
-              }}>🇰🇬</span>
               <input
-                style={{ ...inputStyle, paddingLeft: "40px", marginBottom: 0 }}
+                style={{ ...inputStyle, marginBottom: 0 }}
                 name="phone"
                 value={form.phone}
                 onChange={handleChange}
