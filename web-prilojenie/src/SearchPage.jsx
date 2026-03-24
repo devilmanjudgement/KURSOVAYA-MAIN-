@@ -2,22 +2,22 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Navbar from './Navbar';
 import { Search } from 'lucide-react';
+import { useLang } from './contexts/LangContext';
 import './App.css';
 
 function SearchPage() {
   const [sections, setSections] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const navigate = useNavigate();
+  const { t } = useLang();
 
-  // Загружаем список секций при старте
   useEffect(() => {
     fetch('/api/sections')
       .then(res => res.json())
       .then(setSections)
-      .catch(err => console.error('Ошибка загрузки секций:', err));
+      .catch(err => console.error('Sections load error:', err));
   }, []);
 
-  // Фильтрация
   const filtered = sections.filter(sec =>
     sec.title.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -28,9 +28,8 @@ function SearchPage() {
         className="mobile-screen"
         style={{ justifyContent: 'flex-start', paddingTop: '40px', position: 'relative' }}
       >
-        <h2 style={{ textAlign: 'center', marginBottom: '20px' }}>Поиск</h2>
+        <h2 style={{ textAlign: 'center', marginBottom: '20px' }}>{t('nav_sections')}</h2>
 
-        {/* Поле поиска */}
         <div style={{ position: 'relative', marginBottom: '20px' }}>
           <Search
             size={18}
@@ -38,7 +37,7 @@ function SearchPage() {
           />
           <input
             type="text"
-            placeholder="Найти секцию (например: Йога)"
+            placeholder={t('search_placeholder')}
             className="input-field"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
@@ -46,7 +45,6 @@ function SearchPage() {
           />
         </div>
 
-        {/* Карточки результатов */}
         <div className="sections-grid">
           {filtered.map((sec) => (
             <div
@@ -103,10 +101,9 @@ function SearchPage() {
             </div>
           ))}
 
-          {/* Если ничего не найдено */}
           {filtered.length === 0 && sections.length > 0 && (
             <p style={{ gridColumn: '1 / -1', textAlign: 'center', color: '#888' }}>
-              Ничего не найдено 
+              {t('sections_not_found')}
             </p>
           )}
         </div>

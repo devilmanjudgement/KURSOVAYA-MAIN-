@@ -109,6 +109,14 @@ web-prilojenie/
 - `DELETE /api/admin/bookings/:id` — удалить бронирование
 - `GET /api/admin/logs` — журнал безопасности
 
+## Локализация (i18n)
+
+Приложение поддерживает два языка: русский (по умолчанию) и английский. Переключение — кнопкой в Navbar, выбор сохраняется в `localStorage`.
+
+- Все переводы хранятся в `src/contexts/LangContext.jsx` в объекте `T`
+- Хук `useLang()` возвращает `{ lang, toggleLang, t }` — функция `t(key)` возвращает перевод
+- Все компоненты используют `t()` для UI-текстов: Login, Register, Home, Section, SectionsList, Profile, Chat, Schedule, ScheduleEdit, BookingConfirm, Attendance, SearchPage, Success, TeacherPanel, TeacherBookings, AdminPanel
+
 ## Известные особенности
 
 - `bookings.user` хранит имя (TEXT), не user_id — исторически сложившийся дизайн

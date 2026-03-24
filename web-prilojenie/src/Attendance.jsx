@@ -2,9 +2,11 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Navbar from "./Navbar";
 import { ArrowLeft, CheckCircle, XCircle, CalendarDays } from "lucide-react";
+import { useLang } from "./contexts/LangContext";
 
 export default function Attendance() {
   const navigate = useNavigate();
+  const { t } = useLang();
   const user = JSON.parse(localStorage.getItem("user") || "{}");
 
   const [records, setRecords] = useState([]);
@@ -46,10 +48,10 @@ export default function Attendance() {
             </button>
             <div>
               <h2 style={{ margin: 0, fontSize: "20px", fontWeight: 800 }}>
-                📋 Посещаемость
+                📋 {t("att_title")}
               </h2>
               <p style={{ margin: "2px 0 0", fontSize: "12px", opacity: 0.8 }}>
-                {user.role === "student" ? user.name : "Все студенты"}
+                {user.role === "student" ? user.name : t("att_all_students")}
               </p>
             </div>
           </div>
@@ -61,9 +63,9 @@ export default function Attendance() {
             gap: "10px", padding: "14px 14px 0",
           }}>
             {[
-              { label: "Всего", value: stats.total, color: "#0056b3" },
-              { label: "Присутствовал", value: stats.present, color: "#16a34a" },
-              { label: "Пропустил", value: stats.absent, color: "#dc2626" },
+              { label: t("att_total"), value: stats.total, color: "#0056b3" },
+              { label: t("att_present"), value: stats.present, color: "#16a34a" },
+              { label: t("att_absent"), value: stats.absent, color: "#dc2626" },
             ].map((s) => (
               <div key={s.label} style={{
                 background: "#fff", borderRadius: "12px", padding: "12px 8px",
@@ -87,18 +89,18 @@ export default function Attendance() {
               }} />
             </div>
             <div style={{ fontSize: "11px", color: "#888", marginTop: "4px", textAlign: "right" }}>
-              Посещаемость: {stats.pct}%
+              {t("att_attendance_pct")} {stats.pct}%
             </div>
           </div>
         )}
 
         <div style={{ flex: 1, overflowY: "auto", padding: "12px 14px 90px" }}>
           {loading ? (
-            <p style={{ color: "#aaa", textAlign: "center", marginTop: "40px" }}>Загрузка...</p>
+            <p style={{ color: "#aaa", textAlign: "center", marginTop: "40px" }}>{t("loading")}</p>
           ) : records.length === 0 ? (
             <div style={{ textAlign: "center", color: "#aaa", marginTop: "50px" }}>
               <div style={{ fontSize: "40px" }}>📭</div>
-              <p>Записей о посещаемости нет</p>
+              <p>{t("att_no_records")}</p>
             </div>
           ) : (
             records.map((r, i) => (
@@ -136,7 +138,7 @@ export default function Attendance() {
                   background: r.present ? "#dcfce7" : "#fee2e2",
                   borderRadius: "6px", padding: "3px 8px",
                 }}>
-                  {r.present ? "Присутствовал" : "Пропустил"}
+                  {r.present ? t("att_present_badge") : t("att_absent_badge")}
                 </div>
               </div>
             ))

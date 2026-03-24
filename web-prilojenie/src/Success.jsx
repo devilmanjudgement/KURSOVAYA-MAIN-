@@ -1,16 +1,18 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CheckCircle, Search } from 'lucide-react';
+import { useLang } from './contexts/LangContext';
 import './App.css';
 
 function Success() {
   const navigate = useNavigate();
+  const { t } = useLang();
 
   return (
     <div className="mobile-wrapper">
       <div className="mobile-screen" style={{ justifyContent: 'center', alignItems: 'center', textAlign: 'center' }}>
         
-        <h1 style={{ marginBottom: '40px', fontSize: '32px' }}>Заявка подана</h1>
+        <h1 style={{ marginBottom: '40px', fontSize: '32px' }}>{t('success_title')}</h1>
 
         <div style={{ marginBottom: '60px' }}>
            <CheckCircle size={120} color="#0056b3" fill="#e6f0fa" />
@@ -21,7 +23,7 @@ function Success() {
           onClick={() => navigate('/home')}
           style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}
         >
-          Другие секции <Search size={18} />
+          {t('success_btn')} <Search size={18} />
         </button>
 
       </div>

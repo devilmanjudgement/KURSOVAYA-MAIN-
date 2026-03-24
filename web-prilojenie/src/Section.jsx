@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, MapPin, User } from "lucide-react";
+import { useLang } from "./contexts/LangContext";
 import "./App.css";
 
 const PLACEHOLDER = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='70' height='70'%3E%3Crect width='70' height='70' rx='10' fill='%23e5e7eb'/%3E%3Ctext x='35' y='44' font-size='28' text-anchor='middle'%3E🏅%3C/text%3E%3C/svg%3E";
@@ -8,6 +9,7 @@ const PLACEHOLDER = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg
 function Section() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { t } = useLang();
   const [section, setSection] = useState(null);
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -25,7 +27,7 @@ function Section() {
 
   const handleBooking = () => {
     if (!user || user.role !== "student") {
-      alert("Запись доступна только студентам!");
+      alert(t("err_booking_only_students"));
       return;
     }
 
@@ -44,18 +46,18 @@ function Section() {
       .then((r) => r.json())
       .then((data) => {
         if (data.success) {
-          alert("✅ Заявка отправлена тренеру!");
+          alert(t("section_booked"));
           navigate("/home");
-        } else alert("Ошибка при записи!");
+        } else alert(t("err_booking_fail"));
       })
-      .catch(() => alert("Сервер недоступен"));
+      .catch(() => alert(t("err_server_unavail")));
   };
 
   if (loading)
     return (
       <div className="mobile-wrapper">
         <div className="mobile-screen" style={{ display: "flex", justifyContent: "center", alignItems: "center" }}>
-          <p style={{ color: "#aaa" }}>Загрузка...</p>
+          <p style={{ color: "#aaa" }}>{t("loading")}</p>
         </div>
       </div>
     );
@@ -65,10 +67,10 @@ function Section() {
       <div className="mobile-wrapper">
         <div className="mobile-screen" style={{ display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", textAlign: "center", padding: "40px" }}>
           <div style={{ fontSize: "48px", marginBottom: "12px" }}>😕</div>
-          <h3 style={{ color: "#555", marginBottom: "8px" }}>Секция не найдена</h3>
-          <p style={{ color: "#aaa", fontSize: "13px", marginBottom: "20px" }}>Возможно, она была удалена или ещё не существует</p>
+          <h3 style={{ color: "#555", marginBottom: "8px" }}>{t("err_section_not_found")}</h3>
+          <p style={{ color: "#aaa", fontSize: "13px", marginBottom: "20px" }}>{t("err_section_deleted")}</p>
           <button className="login-btn" style={{ width: "auto", padding: "10px 24px" }} onClick={() => navigate(-1)}>
-            ← Назад
+            {t("go_back")}
           </button>
         </div>
       </div>
@@ -84,7 +86,7 @@ function Section() {
           >
             <ArrowLeft size={24} color="#333" />
           </button>
-          <h2 style={{ flex: 1, textAlign: "center" }}>Секция</h2>
+          <h2 style={{ flex: 1, textAlign: "center" }}>{t("section_title")}</h2>
         </div>
 
         <div
@@ -108,14 +110,14 @@ function Section() {
           <div style={{ fontSize: "14px", marginTop: "10px" }}>
             <MapPin size={14} /> {section.place}
             <br />
-            <User size={14} /> Тренер: {section.coach_name || "Без тренера"}
+            <User size={14} /> {t("section_coach")} {section.coach_name || t("role_no_coach")}
           </div>
         </div>
 
         <div style={{ padding: "0 20px" }}>
-          <p><b>Описание:</b> {section.description || "Описание отсутствует"}</p>
+          <p><b>{t("section_description")}</b> {section.description || t("section_no_desc")}</p>
           <p>
-            <b>Занято:</b> {section.students_count || 0} / {section.max_students || 20}
+            <b>{t("section_spots")}</b> {section.students_count || 0} / {section.max_students || 20}
           </p>
 
           <div
@@ -141,15 +143,15 @@ function Section() {
               <div style={{ width: "60px", height: "60px", borderRadius: "50%", background: "#ddd" }} />
             )}
             <div>
-              <p style={{ margin: 0, fontWeight: 600 }}>Тренер:</p>
-              <p style={{ margin: 0 }}>{section.coach_name || "Без тренера"}</p>
+              <p style={{ margin: 0, fontWeight: 600 }}>{t("section_coach")}</p>
+              <p style={{ margin: 0 }}>{section.coach_name || t("role_no_coach")}</p>
             </div>
           </div>
         </div>
 
         {user?.role === "student" && (
           <button className="login-btn" style={{ margin: "20px" }} onClick={handleBooking}>
-            Отправить заявку »
+            {t("section_book")}
           </button>
         )}
       </div>

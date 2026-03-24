@@ -1,11 +1,13 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useLang } from "./contexts/LangContext";
 import "./App.css";
 
 const CONSENT_LINK = "https://www.consultant.ru/document/cons_doc_LAW_61801/";
 
 function Register() {
   const navigate = useNavigate();
+  const { t } = useLang();
 
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
@@ -30,14 +32,14 @@ function Register() {
   const sendCode = async (e) => {
     e.preventDefault();
     setError("");
-    if (!form.name.trim()) return setError("Введите ФИО");
-    if (!form.login.trim()) return setError("Введите логин");
-    if (form.login.trim().length < 3) return setError("Логин — минимум 3 символа");
-    if (!form.password.trim()) return setError("Введите пароль");
-    if (form.password.trim().length < 6) return setError("Пароль — минимум 6 символов");
-    if (!form.phone.trim()) return setError("Введите номер телефона");
-    if (!validatePhone(form.phone)) return setError("Некорректный номер телефона");
-    if (!agreed) return setError("Необходимо согласиться с обработкой персональных данных");
+    if (!form.name.trim()) return setError(t("err_no_name"));
+    if (!form.login.trim()) return setError(t("err_no_login"));
+    if (form.login.trim().length < 3) return setError(t("err_login_short"));
+    if (!form.password.trim()) return setError(t("err_no_pass"));
+    if (form.password.trim().length < 6) return setError(t("err_pass_short"));
+    if (!form.phone.trim()) return setError(t("err_no_phone"));
+    if (!validatePhone(form.phone)) return setError(t("err_bad_phone"));
+    if (!agreed) return setError(t("err_no_agree"));
 
     setLoading(true);
     try {
@@ -51,10 +53,10 @@ function Register() {
         setSentCode(data._devCode || "");
         setStep(2);
       } else {
-        setError(data.message || "Ошибка отправки кода");
+        setError(data.message || t("err_send_code"));
       }
     } catch {
-      setError("Сервер не отвечает");
+      setError(t("err_server"));
     } finally {
       setLoading(false);
     }
@@ -63,7 +65,7 @@ function Register() {
   const verifyAndRegister = async (e) => {
     e.preventDefault();
     setError("");
-    if (!code.trim()) return setError("Введите код из SMS");
+    if (!code.trim()) return setError(t("err_code_empty"));
 
     setLoading(true);
     try {
@@ -75,7 +77,7 @@ function Register() {
       const verifyData = await verifyRes.json();
       if (!verifyData.success) {
         setLoading(false);
-        return setError("Неверный код. Попробуйте ещё раз");
+        return setError(t("err_code_wrong"));
       }
 
       const regRes = await fetch("/api/register", {
@@ -91,13 +93,13 @@ function Register() {
       });
       const regData = await regRes.json();
       if (regData.success) {
-        alert("Регистрация успешна! Теперь войдите.");
+        alert(t("reg_success"));
         navigate("/");
       } else {
-        setError(regData.message || "Ошибка регистрации");
+        setError(regData.message || t("err_reg"));
       }
     } catch {
-      setError("Сервер не отвечает");
+      setError(t("err_server"));
     } finally {
       setLoading(false);
     }
@@ -119,8 +121,8 @@ function Register() {
     <div className="mobile-wrapper">
       <div className="mobile-screen" style={{ overflowY: "auto" }}>
         <div className="header" style={{ paddingTop: "36px", textAlign: "center" }}>
-          <h1 className="app-title" style={{ fontSize: "26px" }}>Регистрация</h1>
-          <p className="app-subtitle">Только для студентов</p>
+          <h1 className="app-title" style={{ fontSize: "26px" }}>{t("reg_title")}</h1>
+          <p className="app-subtitle">{t("reg_subtitle")}</p>
 
           <div style={{ display: "flex", justifyContent: "center", gap: "8px", marginTop: "12px" }}>
             {[1, 2].map((s) => (
@@ -136,7 +138,7 @@ function Register() {
         {step === 1 && (
           <form onSubmit={sendCode} style={{ padding: "20px" }}>
             <p style={{ fontSize: "13px", color: "#888", marginBottom: "14px", textAlign: "center" }}>
-              Шаг 1 из 2 — данные аккаунта
+              {t("reg_step1")}
             </p>
 
             <input
@@ -144,7 +146,7 @@ function Register() {
               name="name"
               value={form.name}
               onChange={handleChange}
-              placeholder="ФИО"
+              placeholder={t("field_name")}
               maxLength={100}
             />
             <input
@@ -152,7 +154,7 @@ function Register() {
               name="login"
               value={form.login}
               onChange={handleChange}
-              placeholder="Логин"
+              placeholder={t("field_login")}
               maxLength={50}
             />
             <input
@@ -161,7 +163,7 @@ function Register() {
               name="password"
               value={form.password}
               onChange={handleChange}
-              placeholder="Пароль (мин. 6 символов)"
+              placeholder={t("field_password")}
               maxLength={100}
             />
             <input
@@ -169,7 +171,7 @@ function Register() {
               name="group"
               value={form.group}
               onChange={handleChange}
-              placeholder="Группа (например гК-31)"
+              placeholder={t("field_group")}
               maxLength={30}
             />
 
@@ -183,7 +185,7 @@ function Register() {
                 name="phone"
                 value={form.phone}
                 onChange={handleChange}
-                placeholder="+996 700 000 000"
+                placeholder={t("field_phone")}
                 maxLength={20}
                 type="tel"
               />
@@ -200,9 +202,9 @@ function Register() {
                 style={{ marginTop: "2px", flexShrink: 0, accentColor: "#0056b3" }}
               />
               <span>
-                Я согласен(а) с{" "}
+                {t("reg_agree")}{" "}
                 <a href={CONSENT_LINK} target="_blank" rel="noreferrer" style={{ color: "#0056b3" }}>
-                  Федеральным законом №152-ФЗ «О персональных данных»
+                  {t("reg_law")}
                 </a>
               </span>
             </label>
@@ -216,13 +218,13 @@ function Register() {
 
             <button type="submit" className="login-btn" disabled={loading}
               style={{ opacity: loading ? 0.7 : 1 }}>
-              {loading ? "Отправка..." : "Получить SMS-код →"}
+              {loading ? t("reg_sending") : t("reg_send_code")}
             </button>
 
             <button type="button" onClick={() => navigate("/")}
               style={{ background: "transparent", border: "none", color: "#888",
                 fontSize: "13px", cursor: "pointer", marginTop: "8px", width: "100%" }}>
-              ← Уже есть аккаунт
+              {t("reg_back_login")}
             </button>
           </form>
         )}
@@ -230,7 +232,7 @@ function Register() {
         {step === 2 && (
           <form onSubmit={verifyAndRegister} style={{ padding: "20px" }}>
             <p style={{ fontSize: "13px", color: "#888", marginBottom: "14px", textAlign: "center" }}>
-              Шаг 2 из 2 — подтверждение
+              {t("reg_step2")}
             </p>
 
             <div style={{
@@ -239,21 +241,21 @@ function Register() {
             }}>
               <div style={{ fontSize: "28px", marginBottom: "6px" }}>📱</div>
               <p style={{ fontSize: "13px", color: "#444", margin: 0 }}>
-                SMS-код отправлен на номер
+                {t("reg_sms_sent")}
               </p>
               <p style={{ fontSize: "15px", fontWeight: 700, color: "#0056b3", margin: "4px 0 0" }}>
                 {form.phone}
               </p>
               {sentCode && (
                 <p style={{ fontSize: "11px", color: "#aaa", marginTop: "8px", margin: "8px 0 0" }}>
-                  (демо-режим: код <strong style={{ color: "#555" }}>{sentCode}</strong>)
+                  ({t("reg_demo")} <strong style={{ color: "#555" }}>{sentCode}</strong>)
                 </p>
               )}
             </div>
 
             <div style={{ textAlign: "center", marginBottom: "16px" }}>
               <label style={{ fontSize: "13px", color: "#666", display: "block", marginBottom: "8px" }}>
-                Введите 4-значный код
+                {t("reg_enter_code")}
               </label>
               <input
                 value={code}
@@ -284,13 +286,13 @@ function Register() {
 
             <button type="submit" className="login-btn" disabled={loading || code.length !== 4}
               style={{ opacity: (loading || code.length !== 4) ? 0.6 : 1 }}>
-              {loading ? "Проверка..." : "Подтвердить и зарегистрироваться"}
+              {loading ? t("reg_checking") : t("reg_confirm")}
             </button>
 
             <button type="button" onClick={() => { setStep(1); setCode(""); setError(""); }}
               style={{ background: "transparent", border: "none", color: "#888",
                 fontSize: "13px", cursor: "pointer", marginTop: "8px", width: "100%" }}>
-              ← Изменить данные
+              {t("reg_back_data")}
             </button>
           </form>
         )}

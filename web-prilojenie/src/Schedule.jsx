@@ -2,33 +2,39 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Navbar from "./Navbar";
 import { Clock, MapPin, Edit3, User } from "lucide-react";
+import { useLang } from "./contexts/LangContext";
 import "./App.css";
 
-const DAY_ORDER = ["Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота", "Воскресенье"];
-const DAY_SHORT = { Понедельник: "ПН", Вторник: "ВТ", Среда: "СР", Четверг: "ЧТ", Пятница: "ПТ", Суббота: "СБ", Воскресенье: "ВС" };
+const DAY_ORDER_RU = ["Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота", "Воскресенье"];
+const DAY_SHORT_RU = { Понедельник: "ПН", Вторник: "ВТ", Среда: "СР", Четверг: "ЧТ", Пятница: "ПТ", Суббота: "СБ", Воскресенье: "ВС" };
+const DAY_SHORT_EN = { Понедельник: "MO", Вторник: "TU", Среда: "WE", Четверг: "TH", Пятница: "FR", Суббота: "SA", Воскресенье: "SU" };
+const DAY_EN = { Понедельник: "Monday", Вторник: "Tuesday", Среда: "Wednesday", Четверг: "Thursday", Пятница: "Friday", Суббота: "Saturday", Воскресенье: "Sunday" };
 
 function Schedule() {
   const [schedule, setSchedule] = useState([]);
   const navigate = useNavigate();
+  const { t, lang } = useLang();
   const user = JSON.parse(localStorage.getItem("user") || "{}");
 
   useEffect(() => {
     fetch("/api/schedule")
       .then((res) => res.json())
       .then(setSchedule)
-      .catch((err) => console.error("Ошибка загрузки:", err));
+      .catch((err) => console.error("Schedule load error:", err));
   }, []);
 
-  const grouped = DAY_ORDER.reduce((acc, day) => {
+  const grouped = DAY_ORDER_RU.reduce((acc, day) => {
     const items = schedule.filter((s) => s.day_of_week === day);
     if (items.length) acc[day] = items.sort((a, b) => a.time.localeCompare(b.time));
     return acc;
   }, {});
 
+  const dayLabel = (day) => lang === "en" ? (DAY_EN[day] || day) : day;
+  const dayShort = (day) => lang === "en" ? (DAY_SHORT_EN[day] || day.slice(0, 2).toUpperCase()) : (DAY_SHORT_RU[day] || day.slice(0, 2).toUpperCase());
+
   return (
     <div className="mobile-wrapper">
       <div className="mobile-screen" style={{ justifyContent: "flex-start", position: "relative" }}>
-        {/* Шапка */}
         <div style={{
           background: "linear-gradient(135deg, #0056b3, #0077cc)",
           padding: "28px 20px 20px",
@@ -36,9 +42,9 @@ function Schedule() {
         }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <div>
-              <h2 style={{ margin: 0, fontSize: "22px", fontWeight: 800 }}>📅 Расписание</h2>
+              <h2 style={{ margin: 0, fontSize: "22px", fontWeight: 800 }}>📅 {t("schedule_title")}</h2>
               <p style={{ margin: "4px 0 0", fontSize: "12px", opacity: 0.8 }}>
-                {Object.values(grouped).flat().length} занятий на неделе
+                {Object.values(grouped).flat().length} {t("schedule_count")}
               </p>
             </div>
             {user.role === "coach" && (
@@ -57,23 +63,21 @@ function Schedule() {
                   cursor: "pointer",
                 }}
               >
-                <Edit3 size={14} /> Изменить
+                <Edit3 size={14} /> {t("schedule_edit")}
               </button>
             )}
           </div>
         </div>
 
-        {/* Список по дням */}
         <div style={{ overflowY: "auto", paddingBottom: "85px", flex: 1 }}>
           {Object.keys(grouped).length === 0 ? (
             <div style={{ textAlign: "center", color: "#aaa", marginTop: "60px" }}>
               <div style={{ fontSize: "40px" }}>📭</div>
-              <p>Расписание пока пустое</p>
+              <p>{t("schedule_empty")}</p>
             </div>
           ) : (
             Object.entries(grouped).map(([day, items]) => (
               <div key={day} style={{ padding: "0 14px", marginTop: "16px" }}>
-                {/* Заголовок дня */}
                 <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "10px" }}>
                   <div style={{
                     background: "#0056b3",
@@ -84,14 +88,13 @@ function Schedule() {
                     fontWeight: 700,
                     letterSpacing: "1px",
                   }}>
-                    {DAY_SHORT[day] || day.slice(0, 2).toUpperCase()}
+                    {dayShort(day)}
                   </div>
-                  <div style={{ fontWeight: 700, fontSize: "15px", color: "#222" }}>{day}</div>
+                  <div style={{ fontWeight: 700, fontSize: "15px", color: "#222" }}>{dayLabel(day)}</div>
                   <div style={{ flex: 1, height: "1px", background: "#eee" }} />
-                  <div style={{ fontSize: "12px", color: "#aaa" }}>{items.length} зан.</div>
+                  <div style={{ fontSize: "12px", color: "#aaa" }}>{items.length} {t("schedule_lessons")}</div>
                 </div>
 
-                {/* Карточки занятий */}
                 <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
                   {items.map((it, i) => (
                     <div
@@ -104,14 +107,12 @@ function Schedule() {
                         display: "flex",
                       }}
                     >
-                      {/* Цветная полоска слева */}
                       <div style={{
                         width: "5px",
                         background: it.color || "#0056b3",
                         flexShrink: 0,
                       }} />
 
-                      {/* Время */}
                       <div style={{
                         padding: "12px 10px",
                         display: "flex",
@@ -125,11 +126,10 @@ function Schedule() {
                           {it.time?.slice(0, 5)}
                         </div>
                         <div style={{ fontSize: "10px", color: "#aaa", marginTop: "2px" }}>
-                          <Clock size={9} /> время
+                          <Clock size={9} /> {t("schedule_time")}
                         </div>
                       </div>
 
-                      {/* Основная информация */}
                       <div style={{ padding: "10px 12px", flex: 1 }}>
                         <div style={{ fontWeight: 700, fontSize: "14px", marginBottom: "4px", color: "#1a1a1a" }}>
                           {it.title}
@@ -148,7 +148,6 @@ function Schedule() {
                         </div>
                       </div>
 
-                      {/* Цветной кружок */}
                       <div style={{
                         display: "flex", alignItems: "center", padding: "0 12px",
                       }}>

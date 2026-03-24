@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Send, ArrowLeft, Smile } from "lucide-react";
 import Navbar from "./Navbar";
+import { useLang } from "./contexts/LangContext";
 import "./App.css";
 
 const EMOJIS = [
@@ -13,6 +14,7 @@ const EMOJIS = [
 function Chat() {
   const user = JSON.parse(localStorage.getItem("user") || "{}");
   const navigate = useNavigate();
+  const { t } = useLang();
 
   const [contacts, setContacts] = useState([]);
   const [selected, setSelected] = useState(null);
@@ -96,17 +98,17 @@ function Chat() {
               color: "#fff",
             }}>
               <h2 style={{ margin: 0, fontSize: "20px", fontWeight: 800 }}>
-                💬 {user.role === "coach" ? "Студенты" : "Преподаватели"}
+                💬 {user.role === "coach" ? t("chat_students") : t("chat_coaches")}
               </h2>
               <p style={{ margin: "4px 0 0", fontSize: "12px", opacity: 0.8 }}>
-                {contacts.length} контактов
+                {contacts.length} {t("chat_contacts")}
               </p>
             </div>
 
             <div style={{ flex: 1, overflowY: "auto", paddingBottom: "80px" }}>
               {contacts.length === 0 ? (
                 <p style={{ color: "#aaa", textAlign: "center", marginTop: "40px" }}>
-                  Нет доступных контактов
+                  {t("chat_no_contacts")}
                 </p>
               ) : (
                 contacts.map((c) => (
@@ -134,7 +136,7 @@ function Chat() {
                     <div>
                       <div style={{ fontWeight: 600, fontSize: "15px" }}>{c.name}</div>
                       <div style={{ fontSize: "12px", color: "#888" }}>
-                        {user.role === "coach" ? "Студент" : "Преподаватель"}
+                        {user.role === "coach" ? t("chat_student_label") : t("chat_coach_label")}
                       </div>
                     </div>
                   </div>
@@ -176,7 +178,7 @@ function Chat() {
               background: "#f0f4f8", display: "flex", flexDirection: "column", gap: "8px",
             }}>
               {messages.length === 0 ? (
-                <p style={{ color: "#bbb", textAlign: "center", marginTop: "30px" }}>Начните переписку</p>
+                <p style={{ color: "#bbb", textAlign: "center", marginTop: "30px" }}>{t("chat_start")}</p>
               ) : (
                 messages.map((m) => {
                   const isMe = m.sender_id === user.id;
@@ -230,7 +232,7 @@ function Chat() {
                 value={text}
                 onChange={(e) => setText(e.target.value)}
                 onKeyDown={handleKey}
-                placeholder="Введите сообщение..."
+                placeholder={t("field_message")}
                 style={{
                   flex: 1, border: "1px solid #e0e0e0", borderRadius: "20px",
                   padding: "8px 14px", fontSize: "14px", outline: "none", background: "#f5f5f5",

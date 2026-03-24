@@ -2,10 +2,12 @@ import React, { useEffect, useState } from "react";
 import Navbar from "./Navbar";
 import TeacherPanel from "./TeacherPanel";
 import { useNavigate } from "react-router-dom";
+import { useLang } from "./contexts/LangContext";
 import "./App.css";
 
 function Profile() {
   const navigate = useNavigate();
+  const { t } = useLang();
   const user = JSON.parse(localStorage.getItem("user") || "{}");
 
   const [avatarPreview, setAvatarPreview] = useState(user.avatar || null);
@@ -31,7 +33,7 @@ function Profile() {
   };
 
   const updateAvatar = () => {
-    if (!newAvatar) return alert("Выберите файл");
+    if (!newAvatar) return alert(t("err_no_file"));
     const fd = new FormData();
     fd.append("avatar", newAvatar);
     fetch(`/api/profile/${user.id}`, { method: "PUT", body: fd })
@@ -41,14 +43,14 @@ function Profile() {
           setAvatarPreview(d.user.avatar);
           const updated = { ...user, avatar: d.user.avatar };
           localStorage.setItem("user", JSON.stringify(updated));
-          alert("Фото обновлено!");
+          alert(t("profile_photo_updated"));
         }
       })
-      .catch(() => alert("Ошибка при загрузке фото"));
+      .catch(() => alert(t("err_photo_upload")));
   };
 
   const uploadDoc = () => {
-    if (!docFile) return alert("Файл не выбран");
+    if (!docFile) return alert(t("err_file_none"));
     const fd = new FormData();
     fd.append("file", docFile);
     fetch(`/api/student/${user.id}/healthdoc`, {
@@ -56,19 +58,19 @@ function Profile() {
       body: fd,
     })
       .then((r) => r.json())
-      .then((d) => d.success && alert("Справка загружена"))
-      .catch(() => alert("Ошибка"));
+      .then((d) => d.success && alert(t("profile_doc_uploaded")))
+      .catch(() => alert(t("err_server_short")));
   };
 
   const cancelBooking = (id) => {
-    if (!window.confirm("Отменить заявку?")) return;
+    if (!window.confirm(t("err_cancel_booking"))) return;
     fetch(`/api/bookings/${id}`, { method: "DELETE" })
       .then((r) => r.json())
       .then((d) => d.success && setEnrollments((prev) => prev.filter((x) => x.bookingId !== id)));
   };
 
   const changePassword = () => {
-    if (!oldPass || !newPass) return alert("Введите старый и новый пароли");
+    if (!oldPass || !newPass) return alert(t("err_pass_fields"));
     fetch(`/api/profile/${user.id}/password`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
@@ -77,25 +79,24 @@ function Profile() {
       .then((r) => r.json())
       .then((d) => {
         if (d.success) {
-          alert("Пароль обновлён");
+          alert(t("profile_pass_updated"));
           setOldPass("");
           setNewPass("");
-        } else alert(d.message || "Ошибка смены пароля");
+        } else alert(d.message || t("err_pass_change"));
       })
-      .catch(() => alert("Ошибка сервера"));
+      .catch(() => alert(t("err_server_short")));
   };
 
   if (!user.id)
     return (
       <div className="mobile-wrapper">
         <div className="mobile-screen" style={{ textAlign: "center" }}>
-          <h3>Не авторизован</h3>
-          <button className="login-btn" onClick={() => navigate("/")}>Войти</button>
+          <h3>{t("profile_not_auth")}</h3>
+          <button className="login-btn" onClick={() => navigate("/")}>{t("sign_in")}</button>
         </div>
       </div>
     );
 
-  // === Преподаватель ===
   if (user.role === "coach")
     return (
       <div className="mobile-wrapper">
@@ -107,7 +108,7 @@ function Profile() {
             position: "relative",
           }}
         >
-          <h2 style={{ textAlign: "center" }}>Профиль преподавателя</h2>
+          <h2 style={{ textAlign: "center" }}>{t("profile_coach")}</h2>
           {avatarPreview && (
             <img
               src={avatarPreview}
@@ -122,32 +123,31 @@ function Profile() {
             />
           )}
           <input type="file" onChange={(e) => setNewAvatar(e.target.files[0])} />
-          <button className="login-btn" onClick={updateAvatar}>Обновить фото</button>
+          <button className="login-btn" onClick={updateAvatar}>{t("profile_update_photo")}</button>
           <TeacherPanel />
           <button
             className="login-btn"
             style={{ background: "#333", marginTop: 15 }}
             onClick={logout}
           >
-            Выйти
+            {t("logout")}
           </button>
           <Navbar />
         </div>
       </div>
     );
 
-  // === Студент ===
   return (
     <div className="mobile-wrapper">
       <div
         className="mobile-screen"
         style={{
           padding: "20px 20px 100px",
-          overflowY: "auto", // 👈 добавили прокрутку
+          overflowY: "auto",
           position: "relative",
         }}
       >
-        <h2 style={{ textAlign: "center" }}>Профиль студента</h2>
+        <h2 style={{ textAlign: "center" }}>{t("profile_student")}</h2>
 
         {avatarPreview && (
           <img
@@ -164,13 +164,13 @@ function Profile() {
         )}
 
         <input type="file" onChange={(e) => setNewAvatar(e.target.files[0])} />
-        <button className="login-btn" onClick={updateAvatar}>Обновить фото</button>
+        <button className="login-btn" onClick={updateAvatar}>{t("profile_update_photo")}</button>
 
-        <h3>Мед. справка</h3>
+        <h3>{t("profile_healthdoc")}</h3>
         <input type="file" onChange={(e) => setDocFile(e.target.files[0])} />
-        <button className="login-btn" onClick={uploadDoc}>Загрузить справку</button>
+        <button className="login-btn" onClick={uploadDoc}>{t("profile_upload_doc")}</button>
 
-        <h3>Мои заявки</h3>
+        <h3>{t("profile_my_bookings")}</h3>
         {enrollments.length ? (
           enrollments.map((s) => (
             <div key={s.bookingId}
@@ -185,22 +185,21 @@ function Profile() {
               <br />👨‍🏫 {s.coach}
               <br />
               <span style={{ color: "#888", fontSize: 12 }}>
-                Статус: {s.status}
+                {t("profile_booking_status")} {s.status}
               </span>
               <br />
               <button
                 className="login-btn"
                 style={{ background: "#f44336", marginTop: 5 }}
                 onClick={() => cancelBooking(s.bookingId)}>
-                Отменить заявку
+                {t("profile_cancel_booking")}
               </button>
             </div>
           ))
         ) : (
-          <p style={{ color: "#888" }}>Нет заявок</p>
+          <p style={{ color: "#888" }}>{t("profile_no_bookings")}</p>
         )}
 
-        {/* ==== Блок смены пароля ==== */}
         <details
           style={{
             marginTop: 20,
@@ -210,25 +209,25 @@ function Profile() {
           }}
         >
           <summary style={{ cursor: "pointer", fontWeight: 600 }}>
-            Сменить пароль ▾
+            {t("profile_change_pass")}
           </summary>
           <div style={{ marginTop: 10 }}>
             <input
               type="password"
               className="input-field"
-              placeholder="Старый пароль"
+              placeholder={t("field_old_pass")}
               value={oldPass}
               onChange={(e) => setOldPass(e.target.value)}
             />
             <input
               type="password"
               className="input-field"
-              placeholder="Новый пароль"
+              placeholder={t("field_new_pass")}
               value={newPass}
               onChange={(e) => setNewPass(e.target.value)}
             />
             <button className="login-btn" onClick={changePassword}>
-              Обновить пароль
+              {t("profile_update_pass")}
             </button>
           </div>
         </details>
@@ -238,7 +237,7 @@ function Profile() {
           style={{ background: "#333", marginTop: 15 }}
           onClick={logout}
         >
-          Выйти
+          {t("logout")}
         </button>
 
         <Navbar />

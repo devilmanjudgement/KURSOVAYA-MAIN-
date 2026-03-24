@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Navbar from "./Navbar";
+import { useLang } from "./contexts/LangContext";
 import "./App.css";
 
 const PLACEHOLDER = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='70' height='70' viewBox='0 0 70 70'%3E%3Crect width='70' height='70' fill='%23e5e7eb'/%3E%3Ctext x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-size='28' fill='%239ca3af'%3E🏟%3C/text%3E%3C/svg%3E";
@@ -9,6 +10,7 @@ function SectionsList() {
   const [sections, setSections] = useState([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
+  const { t } = useLang();
 
   useEffect(() => {
     fetch("/api/sections")
@@ -20,7 +22,7 @@ function SectionsList() {
   if (loading) return (
     <div className="mobile-wrapper">
       <div className="mobile-screen" style={{ justifyContent: "center", alignItems: "center" }}>
-        <p style={{ color: "#aaa" }}>Загрузка...</p>
+        <p style={{ color: "#aaa" }}>{t("loading")}</p>
       </div>
     </div>
   );
@@ -33,9 +35,9 @@ function SectionsList() {
           padding: "28px 20px 20px",
           color: "#fff",
         }}>
-          <h2 style={{ margin: 0, fontSize: "22px", fontWeight: 800 }}>🏟️ Все секции</h2>
+          <h2 style={{ margin: 0, fontSize: "22px", fontWeight: 800 }}>{t("sl_title")}</h2>
           <p style={{ margin: "4px 0 0", fontSize: "12px", opacity: 0.8 }}>
-            {sections.length} секций доступно
+            {sections.length} {t("sections_available")}
           </p>
         </div>
 
@@ -43,7 +45,7 @@ function SectionsList() {
           {sections.length === 0 ? (
             <div style={{ textAlign: "center", color: "#aaa", marginTop: "60px" }}>
               <div style={{ fontSize: "40px" }}>📭</div>
-              <p>Секций пока нет</p>
+              <p>{t("sections_none")}</p>
             </div>
           ) : sections.map((s) => (
             <div
@@ -79,10 +81,10 @@ function SectionsList() {
                   {s.title}
                 </div>
                 <div style={{ fontSize: "12px", color: "#666", marginBottom: "2px" }}>
-                  📍 {s.place || "Место не указано"}
+                  📍 {s.place || t("sl_no_place")}
                 </div>
                 <div style={{ fontSize: "12px", color: "#666", marginBottom: "4px" }}>
-                  👨‍🏫 {s.coach_name || "Тренер не назначен"}
+                  👨‍🏫 {s.coach_name || t("sl_no_coach")}
                 </div>
                 <div style={{
                   display: "inline-block",

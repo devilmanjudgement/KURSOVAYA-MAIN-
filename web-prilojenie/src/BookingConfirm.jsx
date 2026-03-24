@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, User, Clock } from 'lucide-react';
+import { useLang } from './contexts/LangContext';
 import './App.css';
 
 function BookingConfirm() {
   const navigate = useNavigate();
   const { id } = useParams();
+  const { t } = useLang();
   const [section, setSection] = useState(null);
   const [uploadType, setUploadType] = useState('auto');
   const user = JSON.parse(localStorage.getItem('user') || '{}');
@@ -18,7 +20,7 @@ function BookingConfirm() {
   }, [id]);
 
   const handleConfirm = () => {
-    if (!user.id) return alert('Необходимо войти в аккаунт');
+    if (!user.id) return alert(t('bc_not_auth'));
 
     const bookingData = {
       sectionId: id,
@@ -34,13 +36,13 @@ function BookingConfirm() {
     })
       .then(res => res.json())
       .then(data => { if (data.success) navigate('/success'); })
-      .catch(() => alert('Ошибка! Сервер не отвечает.'));
+      .catch(() => alert(t('err_server_unavail')));
   };
 
   if (!section) return (
     <div className="mobile-wrapper">
       <div className="mobile-screen" style={{ justifyContent: 'center', alignItems: 'center' }}>
-        <p style={{ color: '#aaa' }}>Загрузка...</p>
+        <p style={{ color: '#aaa' }}>{t('loading')}</p>
       </div>
     </div>
   );
@@ -54,7 +56,7 @@ function BookingConfirm() {
             <ArrowLeft size={24} color="#333" />
           </button>
           <h2 style={{ margin: 0, fontSize: '20px', flex: 1, textAlign: 'center', paddingRight: '40px' }}>
-            Подтвердить запись
+            {t('bc_title')}
           </h2>
         </div>
 
@@ -70,7 +72,7 @@ function BookingConfirm() {
             <div style={{ fontSize: '13px', opacity: 0.85 }}>📍 {section.place}</div>
           </div>
 
-          <p style={{ fontWeight: 'bold', marginBottom: '10px' }}>Загрузка документов</p>
+          <p style={{ fontWeight: 'bold', marginBottom: '10px' }}>{t('bc_doc_upload')}</p>
           <div style={{ background: '#eee', padding: '4px', borderRadius: '12px', display: 'flex', marginBottom: '24px' }}>
             <button onClick={() => setUploadType('auto')}
               style={{
@@ -78,7 +80,7 @@ function BookingConfirm() {
                 background: uploadType === 'auto' ? '#0056b3' : 'transparent',
                 color: uploadType === 'auto' ? 'white' : '#888', fontWeight: '600', transition: '0.3s',
               }}>
-              Автоматически
+              {t('bc_auto')}
             </button>
             <button onClick={() => setUploadType('manual')}
               style={{
@@ -86,7 +88,7 @@ function BookingConfirm() {
                 background: uploadType === 'manual' ? '#0056b3' : 'transparent',
                 color: uploadType === 'manual' ? 'white' : '#888', fontWeight: '600', transition: '0.3s',
               }}>
-              Вручную
+              {t('bc_manual')}
             </button>
           </div>
 
@@ -94,21 +96,21 @@ function BookingConfirm() {
             <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
               <User size={24} color="#333" />
               <div>
-                <span style={{ display: 'block', fontWeight: 'bold' }}>Тренер:</span>
-                <span style={{ color: '#555' }}>{section.coach_name || 'Не назначен'}</span>
+                <span style={{ display: 'block', fontWeight: 'bold' }}>{t('bc_coach')}</span>
+                <span style={{ color: '#555' }}>{section.coach_name || t('bc_no_coach')}</span>
               </div>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
               <User size={24} color="#0056b3" />
               <div>
-                <span style={{ display: 'block', fontWeight: 'bold' }}>Студент:</span>
+                <span style={{ display: 'block', fontWeight: 'bold' }}>{t('bc_student')}</span>
                 <span style={{ color: '#0056b3', fontWeight: '600' }}>{user.name}</span>
               </div>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
               <Clock size={24} color="#333" />
               <div>
-                <span style={{ display: 'block', fontWeight: 'bold' }}>Дата подачи:</span>
+                <span style={{ display: 'block', fontWeight: 'bold' }}>{t('bc_date')}</span>
                 <span style={{ color: '#0056b3', fontWeight: 'bold' }}>
                   {new Date().toLocaleDateString('ru-RU')}
                 </span>
@@ -120,7 +122,7 @@ function BookingConfirm() {
         <button className="login-btn"
           style={{ margin: '0 20px 20px', width: 'calc(100% - 40px)' }}
           onClick={handleConfirm}>
-          Подтвердить запись »
+          {t('bc_confirm')}
         </button>
       </div>
     </div>

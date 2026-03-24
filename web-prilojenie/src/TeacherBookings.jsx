@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { Check, XCircle } from 'lucide-react';
+import { useLang } from './contexts/LangContext';
 
 function TeacherBookings({ coach }) {
   const [requests, setRequests] = useState([]);
+  const { t } = useLang();
 
   useEffect(() => {
     fetch(`/api/teacher/${coach}/bookings`)
@@ -29,12 +31,12 @@ function TeacherBookings({ coach }) {
             📅 {r.date}
           </div>
           <div style={{ display: 'flex', gap: '10px' }}>
-            <Check size={22} color="green" title="Принять" />
-            <XCircle size={22} color="red" title="Отклонить" />
+            <Check size={22} color="green" title={t('tp_approve')} />
+            <XCircle size={22} color="red" title={t('tp_reject')} />
           </div>
         </div>
       ))}
-      {!requests.length && <p style={{ textAlign: 'center', color: '#888' }}>Нет заявок</p>}
+      {!requests.length && <p style={{ textAlign: 'center', color: '#888' }}>{t('tb_no_requests')}</p>}
     </div>
   );
 }
