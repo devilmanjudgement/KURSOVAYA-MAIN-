@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Send, ArrowLeft, Smile } from "lucide-react";
 import Navbar from "./Navbar";
 import { useLang } from "./contexts/LangContext";
+import { useTheme } from "./contexts/ThemeContext";
 import "./App.css";
 
 const EMOJIS = [
@@ -15,6 +16,7 @@ function Chat() {
   const user = JSON.parse(localStorage.getItem("user") || "{}");
   const navigate = useNavigate();
   const { t } = useLang();
+  const { isDark } = useTheme();
 
   const [contacts, setContacts] = useState([]);
   const [selected, setSelected] = useState(null);
@@ -117,7 +119,9 @@ function Chat() {
                     onClick={() => setSelected(c)}
                     style={{
                       display: "flex", alignItems: "center", gap: "12px",
-                      padding: "14px 20px", borderBottom: "1px solid #f0f0f0", cursor: "pointer",
+                      padding: "14px 20px",
+                      borderBottom: `1px solid ${isDark ? "var(--border-color)" : "#f0f0f0"}`,
+                      cursor: "pointer",
                     }}
                   >
                     {c.avatar ? (
@@ -149,7 +153,9 @@ function Chat() {
           <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
             <div style={{
               display: "flex", alignItems: "center", gap: "10px",
-              padding: "12px 16px", borderBottom: "1px solid #eee", background: "#fff",
+              padding: "12px 16px",
+              borderBottom: `1px solid ${isDark ? "var(--border-color)" : "#eee"}`,
+              background: isDark ? "var(--bg-card)" : "#fff",
             }}>
               <button
                 onClick={() => { setSelected(null); setMessages([]); setShowEmoji(false); }}
@@ -175,7 +181,8 @@ function Chat() {
 
             <div style={{
               flex: 1, overflowY: "auto", padding: "12px 14px",
-              background: "#f0f4f8", display: "flex", flexDirection: "column", gap: "8px",
+              background: isDark ? "var(--bg-body)" : "#f0f4f8",
+              display: "flex", flexDirection: "column", gap: "8px",
             }}>
               {messages.length === 0 ? (
                 <p style={{ color: "#bbb", textAlign: "center", marginTop: "30px" }}>{t("chat_start")}</p>
@@ -185,8 +192,8 @@ function Chat() {
                   return (
                     <div key={m.id} style={{ display: "flex", flexDirection: "column", alignItems: isMe ? "flex-end" : "flex-start" }}>
                       <div style={{
-                        background: isMe ? "linear-gradient(135deg, #0056b3, #0077cc)" : "#fff",
-                        color: isMe ? "#fff" : "#222",
+                        background: isMe ? "linear-gradient(135deg, #0056b3, #0077cc)" : (isDark ? "var(--bg-card)" : "#fff"),
+                        color: isMe ? "#fff" : "var(--text-main)",
                         borderRadius: isMe ? "16px 16px 4px 16px" : "16px 16px 16px 4px",
                         padding: "9px 13px",
                         maxWidth: "75%",
@@ -209,7 +216,9 @@ function Chat() {
             {showEmoji && (
               <div style={{
                 display: "flex", flexWrap: "wrap", gap: "2px",
-                padding: "8px 10px", background: "#fff", borderTop: "1px solid #eee",
+                padding: "8px 10px",
+                background: isDark ? "var(--bg-card)" : "#fff",
+                borderTop: `1px solid ${isDark ? "var(--border-color)" : "#eee"}`,
               }}>
                 {EMOJIS.map((e) => (
                   <button key={e} onClick={() => setText((p) => p + e)}
@@ -222,10 +231,12 @@ function Chat() {
 
             <div style={{
               display: "flex", alignItems: "center", gap: "8px",
-              padding: "10px 12px", background: "#fff", borderTop: "1px solid #eee",
+              padding: "10px 12px",
+              background: isDark ? "var(--bg-card)" : "#fff",
+              borderTop: `1px solid ${isDark ? "var(--border-color)" : "#eee"}`,
             }}>
               <button onClick={() => setShowEmoji(!showEmoji)}
-                style={{ background: "none", border: "none", cursor: "pointer", padding: "4px", color: showEmoji ? "#0056b3" : "#888" }}>
+                style={{ background: "none", border: "none", cursor: "pointer", padding: "4px", color: showEmoji ? "#0056b3" : "var(--text-muted)" }}>
                 <Smile size={22} />
               </button>
               <input
@@ -234,8 +245,12 @@ function Chat() {
                 onKeyDown={handleKey}
                 placeholder={t("field_message")}
                 style={{
-                  flex: 1, border: "1px solid #e0e0e0", borderRadius: "20px",
-                  padding: "8px 14px", fontSize: "14px", outline: "none", background: "#f5f5f5",
+                  flex: 1,
+                  border: `1px solid ${isDark ? "var(--border-color)" : "#e0e0e0"}`,
+                  borderRadius: "20px",
+                  padding: "8px 14px", fontSize: "14px", outline: "none",
+                  background: isDark ? "var(--bg-input)" : "#f5f5f5",
+                  color: "var(--text-main)",
                 }}
               />
               <button onClick={sendMessage}

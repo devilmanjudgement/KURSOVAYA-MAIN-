@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import Navbar from "./Navbar";
 import { Clock, MapPin, Edit3, User } from "lucide-react";
 import { useLang } from "./contexts/LangContext";
+import { useTheme } from "./contexts/ThemeContext";
 import "./App.css";
 
 const DAY_ORDER_RU = ["Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота", "Воскресенье"];
@@ -14,6 +15,7 @@ function Schedule() {
   const [schedule, setSchedule] = useState([]);
   const navigate = useNavigate();
   const { t, lang } = useLang();
+  const { isDark } = useTheme();
   const user = JSON.parse(localStorage.getItem("user") || "{}");
 
   useEffect(() => {
@@ -100,7 +102,7 @@ function Schedule() {
                     <div
                       key={i}
                       style={{
-                        background: "#fff",
+                        background: isDark ? "var(--bg-card)" : "#fff",
                         borderRadius: "14px",
                         boxShadow: "0 2px 10px rgba(0,0,0,0.06)",
                         overflow: "hidden",

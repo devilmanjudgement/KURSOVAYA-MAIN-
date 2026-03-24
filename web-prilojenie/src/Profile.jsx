@@ -3,11 +3,13 @@ import Navbar from "./Navbar";
 import TeacherPanel from "./TeacherPanel";
 import { useNavigate } from "react-router-dom";
 import { useLang } from "./contexts/LangContext";
+import { useTheme } from "./contexts/ThemeContext";
 import "./App.css";
 
 function Profile() {
   const navigate = useNavigate();
   const { t } = useLang();
+  const { isDark } = useTheme();
   const user = JSON.parse(localStorage.getItem("user") || "{}");
 
   const [avatarPreview, setAvatarPreview] = useState(user.avatar || null);
@@ -175,7 +177,7 @@ function Profile() {
           enrollments.map((s) => (
             <div key={s.bookingId}
               style={{
-                background: "#fff",
+                background: isDark ? "var(--bg-card)" : "#fff",
                 borderRadius: 10,
                 padding: 10,
                 marginBottom: 10,
@@ -203,7 +205,7 @@ function Profile() {
         <details
           style={{
             marginTop: 20,
-            background: "#f5f5f5",
+            background: isDark ? "var(--bg-card)" : "#f5f5f5",
             borderRadius: 10,
             padding: "8px 12px",
           }}

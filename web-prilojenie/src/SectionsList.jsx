@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Navbar from "./Navbar";
 import { useLang } from "./contexts/LangContext";
+import { useTheme } from "./contexts/ThemeContext";
 import "./App.css";
 
 const PLACEHOLDER = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='70' height='70' viewBox='0 0 70 70'%3E%3Crect width='70' height='70' fill='%23e5e7eb'/%3E%3Ctext x='50%25' y='54%25' dominant-baseline='middle' text-anchor='middle' font-size='28' fill='%239ca3af'%3E🏟%3C/text%3E%3C/svg%3E";
@@ -11,6 +12,7 @@ function SectionsList() {
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
   const { t } = useLang();
+  const { isDark } = useTheme();
 
   useEffect(() => {
     fetch("/api/sections")
@@ -52,7 +54,7 @@ function SectionsList() {
               key={s.id}
               onClick={() => navigate(`/section/${s.id}`)}
               style={{
-                background: "#fff",
+                background: isDark ? "var(--bg-card)" : "#fff",
                 borderRadius: "16px",
                 padding: "12px",
                 boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
@@ -77,18 +79,18 @@ function SectionsList() {
                 }}
               />
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontWeight: 700, fontSize: "15px", marginBottom: "3px", color: "#111" }}>
+                <div style={{ fontWeight: 700, fontSize: "15px", marginBottom: "3px", color: "var(--text-main)" }}>
                   {s.title}
                 </div>
-                <div style={{ fontSize: "12px", color: "#666", marginBottom: "2px" }}>
+                <div style={{ fontSize: "12px", color: "var(--text-muted)", marginBottom: "2px" }}>
                   📍 {s.place || t("sl_no_place")}
                 </div>
-                <div style={{ fontSize: "12px", color: "#666", marginBottom: "4px" }}>
+                <div style={{ fontSize: "12px", color: "var(--text-muted)", marginBottom: "4px" }}>
                   👨‍🏫 {s.coach_name || t("sl_no_coach")}
                 </div>
                 <div style={{
                   display: "inline-block",
-                  background: "#f0f4ff",
+                  background: isDark ? "var(--bg-input)" : "#f0f4ff",
                   color: "#0056b3",
                   borderRadius: "6px",
                   padding: "2px 8px",
@@ -98,7 +100,7 @@ function SectionsList() {
                   👥 {s.students_count || 0} / {s.max_students || 20}
                 </div>
               </div>
-              <div style={{ fontSize: "18px", color: "#ccc" }}>›</div>
+              <div style={{ fontSize: "18px", color: "var(--text-muted)" }}>›</div>
             </div>
           ))}
         </div>

@@ -2,11 +2,13 @@ import React, { useEffect, useState } from "react";
 import Navbar from "./Navbar";
 import { Trash2, Save, PlusCircle } from "lucide-react";
 import { useLang } from "./contexts/LangContext";
+import { useTheme } from "./contexts/ThemeContext";
 import "./App.css";
 
 function ScheduleEdit() {
   const user = JSON.parse(localStorage.getItem("user") || "{}");
   const { t } = useLang();
+  const { isDark } = useTheme();
   const [schedule, setSchedule] = useState([]);
   const [sections, setSections] = useState([]);
   const [editing, setEditing] = useState(null);
@@ -106,14 +108,14 @@ function ScheduleEdit() {
 
         <div
           style={{
-            background: "#fff",
+            background: isDark ? "var(--bg-card)" : "#fff",
             borderRadius: "16px",
             boxShadow: "0 2px 8px rgba(0,0,0,0.05)",
             padding: "12px 16px",
             marginBottom: "14px",
           }}
         >
-          <h4 style={{ margin: "0 0 8px 0" }}>{t("se_add_lesson")}</h4>
+          <h4 style={{ margin: "0 0 8px 0", color: "var(--text-main)" }}>{t("se_add_lesson")}</h4>
 
           <select
             className="input-field"
@@ -157,7 +159,7 @@ function ScheduleEdit() {
           <div
             key={row.id}
             style={{
-              background: "#fff",
+              background: isDark ? "var(--bg-card)" : "#fff",
               borderRadius: "16px",
               boxShadow: "0 2px 8px rgba(0,0,0,0.05)",
               padding: "12px 16px",
@@ -212,7 +214,7 @@ function ScheduleEdit() {
               >
                 <div>
                   <b>{row.title}</b>
-                  <div style={{ fontSize: "13px", color: "#666" }}>
+                  <div style={{ fontSize: "13px", color: "var(--text-muted)" }}>
                     {row.day_of_week}, {row.time}
                   </div>
                 </div>

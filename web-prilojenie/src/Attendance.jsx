@@ -3,10 +3,12 @@ import { useNavigate } from "react-router-dom";
 import Navbar from "./Navbar";
 import { ArrowLeft, CheckCircle, XCircle, CalendarDays } from "lucide-react";
 import { useLang } from "./contexts/LangContext";
+import { useTheme } from "./contexts/ThemeContext";
 
 export default function Attendance() {
   const navigate = useNavigate();
   const { t } = useLang();
+  const { isDark } = useTheme();
   const user = JSON.parse(localStorage.getItem("user") || "{}");
 
   const [records, setRecords] = useState([]);
@@ -68,12 +70,13 @@ export default function Attendance() {
               { label: t("att_absent"), value: stats.absent, color: "#dc2626" },
             ].map((s) => (
               <div key={s.label} style={{
-                background: "#fff", borderRadius: "12px", padding: "12px 8px",
+                background: isDark ? "var(--bg-card)" : "#fff",
+                borderRadius: "12px", padding: "12px 8px",
                 textAlign: "center", boxShadow: "0 1px 4px rgba(0,0,0,0.07)",
                 borderTop: `3px solid ${s.color}`,
               }}>
                 <div style={{ fontSize: "22px", fontWeight: 800, color: s.color }}>{s.value}</div>
-                <div style={{ fontSize: "10px", color: "#888", marginTop: "2px" }}>{s.label}</div>
+                <div style={{ fontSize: "10px", color: "var(--text-muted)", marginTop: "2px" }}>{s.label}</div>
               </div>
             ))}
           </div>
@@ -81,7 +84,7 @@ export default function Attendance() {
 
         {user.role === "student" && stats.total > 0 && (
           <div style={{ padding: "12px 14px 0" }}>
-            <div style={{ background: "#f3f4f6", borderRadius: "100px", height: "8px", overflow: "hidden" }}>
+            <div style={{ background: isDark ? "var(--bg-input)" : "#f3f4f6", borderRadius: "100px", height: "8px", overflow: "hidden" }}>
               <div style={{
                 width: `${stats.pct}%`, height: "100%",
                 background: stats.pct >= 75 ? "#16a34a" : stats.pct >= 50 ? "#f59e0b" : "#dc2626",
@@ -105,7 +108,7 @@ export default function Attendance() {
           ) : (
             records.map((r, i) => (
               <div key={i} style={{
-                background: "#fff",
+                background: isDark ? "var(--bg-card)" : "#fff",
                 borderRadius: "12px",
                 padding: "12px 14px",
                 marginBottom: "8px",
@@ -120,10 +123,10 @@ export default function Attendance() {
                   : <XCircle size={20} color="#dc2626" />
                 }
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontWeight: 600, fontSize: "14px", color: "#111" }}>
+                  <div style={{ fontWeight: 600, fontSize: "14px", color: "var(--text-main)" }}>
                     {user.role === "student" ? r.section_title || r.section_id : r.student_name}
                   </div>
-                  <div style={{ fontSize: "12px", color: "#888", marginTop: "2px", display: "flex", gap: "8px" }}>
+                  <div style={{ fontSize: "12px", color: "var(--text-muted)", marginTop: "2px", display: "flex", gap: "8px" }}>
                     <span style={{ display: "flex", alignItems: "center", gap: "3px" }}>
                       <CalendarDays size={11} /> {r.date}
                     </span>

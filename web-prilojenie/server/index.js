@@ -380,7 +380,11 @@ app.get("/api/teacher/:id/bookings", (req, res) => {
   if (!sections.length) return res.json([]);
   const ids = sections.map((s) => s.id);
   const rows = db.prepare(`
-    SELECT b.*, s.title, s.place FROM bookings b JOIN sections s ON s.id=b.sectionId
+    SELECT b.*, s.title, s.place,
+           u.id AS student_id, u.group_name, u.health_doc, u.avatar
+    FROM bookings b
+    JOIN sections s ON s.id=b.sectionId
+    LEFT JOIN users u ON u.username=b.user
     WHERE b.sectionId IN (${ids.map(() => "?").join(",")}) AND b.status='pending'
     ORDER BY b.bookingId DESC`).all(...ids);
   res.json(rows);
