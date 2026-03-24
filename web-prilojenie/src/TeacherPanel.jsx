@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Check, XCircle, PlusCircle, Trash2, User, FileText } from "lucide-react";
+import { Check, XCircle, PlusCircle, Trash2, User, FileText, Pencil, Save, X } from "lucide-react";
 import { useLang } from "./contexts/LangContext";
 import { useTheme } from "./contexts/ThemeContext";
 import "./App.css";
@@ -40,6 +40,8 @@ function TeacherPanel() {
   const [showForm, setShowForm] = useState(false);
   const [imageFile, setImageFile] = useState(null);
   const [studentModal, setStudentModal] = useState(null);
+  const [editingSection, setEditingSection] = useState(null);
+  const [editForm, setEditForm] = useState({ title: "", place: "", description: "", max_students: 20 });
   const [form, setForm] = useState({
     title: "",
     place: "",
@@ -107,6 +109,26 @@ function TeacherPanel() {
   const deleteSection = (id) => {
     if (!window.confirm(t("tp_delete_section_confirm"))) return;
     fetch(`/api/sections/${id}`, { method: "DELETE" }).then(() => loadData());
+  };
+
+  const startEdit = (s) => {
+    setEditingSection(s.id);
+    setEditForm({ title: s.title, place: s.place, description: s.description || "", max_students: s.max_students });
+  };
+
+  const saveEdit = (id) => {
+    const fd = new FormData();
+    fd.append("title", editForm.title);
+    fd.append("place", editForm.place);
+    fd.append("description", editForm.description);
+    fd.append("max_students", String(editForm.max_students));
+    fetch(`/api/sections/${id}`, { method: "PUT", body: fd })
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.success) { setEditingSection(null); loadData(); }
+        else alert(t("err_server_short"));
+      })
+      .catch(() => alert(t("err_server_short")));
   };
 
   return (
@@ -273,11 +295,53 @@ function TeacherPanel() {
                 👥 {s.students_count || 0} / {s.max_students}
               </div>
             </div>
-            <button onClick={() => deleteSection(s.id)}
-              style={{ background: "transparent", border: "none", cursor: "pointer", padding: "2px" }}>
-              <Trash2 size={16} color="#f44" />
-            </button>
+            <div style={{ display: "flex", gap: "6px" }}>
+              <button onClick={() => editingSection === s.id ? setEditingSection(null) : startEdit(s)}
+                style={{ background: "transparent", border: "none", cursor: "pointer", padding: "2px" }}>
+                <Pencil size={16} color={editingSection === s.id ? "#888" : "#0056b3"} />
+              </button>
+              <button onClick={() => deleteSection(s.id)}
+                style={{ background: "transparent", border: "none", cursor: "pointer", padding: "2px" }}>
+                <Trash2 size={16} color="#f44" />
+              </button>
+            </div>
           </div>
+
+          {editingSection === s.id && (
+            <div style={{ ...subPanel, marginTop: "10px" }}>
+              <input className="input-field" value={editForm.title}
+                onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
+                placeholder={t("tp_section_name")} style={{ marginBottom: "6px" }} />
+              <input className="input-field" value={editForm.place}
+                onChange={(e) => setEditForm({ ...editForm, place: e.target.value })}
+                placeholder={t("tp_section_place")} style={{ marginBottom: "6px" }} />
+              <input className="input-field" value={editForm.description}
+                onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
+                placeholder={t("tp_section_desc")} style={{ marginBottom: "6px" }} />
+              <input className="input-field" type="number" value={editForm.max_students}
+                onChange={(e) => setEditForm({ ...editForm, max_students: e.target.value })}
+                placeholder={t("tp_max_students")} style={{ marginBottom: "8px" }} />
+              <div style={{ display: "flex", gap: "6px" }}>
+                <button onClick={() => saveEdit(s.id)} style={{
+                  flex: 1, background: "#0056b3", color: "#fff", border: "none",
+                  borderRadius: "8px", padding: "7px", cursor: "pointer", fontSize: "13px",
+                  fontWeight: 600, display: "flex", alignItems: "center", justifyContent: "center", gap: "4px",
+                }}>
+                  <Save size={14} /> {t("tp_save") || "Сохранить"}
+                </button>
+                <button onClick={() => setEditingSection(null)} style={{
+                  flex: 1, background: "transparent",
+                  border: `1px solid ${isDark ? "var(--border-color)" : "#ddd"}`,
+                  borderRadius: "8px", padding: "7px", cursor: "pointer",
+                  color: "var(--text-muted)", fontSize: "13px",
+                  display: "flex", alignItems: "center", justifyContent: "center", gap: "4px",
+                }}>
+                  <X size={14} /> {t("cancel")}
+                </button>
+              </div>
+            </div>
+          )}
+
           <button className="login-btn"
             style={{ fontSize: "13px", padding: "6px 10px", marginTop: "6px" }}
             onClick={() => viewStudents(s.id)}>

@@ -194,7 +194,8 @@ app.post("/api/login", rateLimit(60_000, 10), (req, res) => {
     return res.status(401).json({ success: false, message: "Неверный логин или пароль" });
   }
   secLog("INFO", ip, `Login OK: ${login} (${user.role})`);
-  res.json({ success: true, user });
+  const { password: _pw, ...safeUser } = user;
+  res.json({ success: true, user: safeUser });
 });
 
 app.post("/api/register", rateLimit(60_000, 5), (req, res) => {
