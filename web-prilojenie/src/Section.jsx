@@ -33,10 +33,15 @@ function Section() {
       return;
     }
 
+    const today = new Date();
+    const isoDate = today.getFullYear() + "-" +
+      String(today.getMonth() + 1).padStart(2, "0") + "-" +
+      String(today.getDate()).padStart(2, "0");
+
     const payload = {
       sectionId: id,
       user: user.name,
-      date: new Date().toLocaleDateString(),
+      date: isoDate,
       docType: "auto",
     };
 
@@ -50,7 +55,7 @@ function Section() {
         if (data.success) {
           alert(t("section_booked"));
           navigate("/home");
-        } else alert(t("err_booking_fail"));
+        } else alert(data.message || t("err_booking_fail"));
       })
       .catch(() => alert(t("err_server_unavail")));
   };

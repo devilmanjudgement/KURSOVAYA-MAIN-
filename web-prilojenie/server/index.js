@@ -384,9 +384,30 @@ app.delete("/api/sections/:id", (req, res) => {
    Бронирования
 ========================================================= */
 app.post("/api/bookings", (req, res) => {
-  const { sectionId, user, date, docType } = req.body;
+  const sectionId = sanitize(req.body.sectionId || "");
+  const user = sanitize(req.body.user || "");
+  const date = sanitize(req.body.date || "");
+  const docType = sanitize(req.body.docType || "") || "auto";
+
+  if (!sectionId || !user || !date)
+    return res.json({ success: false, message: "Не все поля заполнены" });
+
+  const section = db.prepare("SELECT id, max_students FROM sections WHERE id=?").get(sectionId);
+  if (!section) return res.json({ success: false, message: "Секция не найдена" });
+
+  const existing = db.prepare(
+    "SELECT bookingId FROM bookings WHERE sectionId=? AND user=? AND status!='cancelled'"
+  ).get(sectionId, user);
+  if (existing) return res.json({ success: false, message: "Вы уже записаны в эту секцию" });
+
+  const filled = db.prepare(
+    "SELECT COUNT(*) AS c FROM bookings WHERE sectionId=? AND status='approved'"
+  ).get(sectionId).c;
+  if (filled >= section.max_students)
+    return res.json({ success: false, message: "В секции нет свободных мест" });
+
   const result = db.prepare("INSERT INTO bookings(sectionId,user,date,docType,status) VALUES (?,?,?,?,?)")
-    .run(sanitize(sectionId), sanitize(user), sanitize(date), sanitize(docType) || "auto", "pending");
+    .run(sectionId, user, date, docType, "pending");
   res.json({ success: true, id: result.lastInsertRowid });
 });
 

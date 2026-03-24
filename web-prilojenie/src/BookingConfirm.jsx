@@ -22,10 +22,15 @@ function BookingConfirm() {
   const handleConfirm = () => {
     if (!user.id) return alert(t('bc_not_auth'));
 
+    const today = new Date();
+    const isoDate = today.getFullYear() + '-' +
+      String(today.getMonth() + 1).padStart(2, '0') + '-' +
+      String(today.getDate()).padStart(2, '0');
+
     const bookingData = {
       sectionId: id,
       user: user.name,
-      date: new Date().toLocaleDateString('ru-RU'),
+      date: isoDate,
       docType: uploadType,
     };
 
@@ -35,7 +40,10 @@ function BookingConfirm() {
       body: JSON.stringify(bookingData),
     })
       .then(res => res.json())
-      .then(data => { if (data.success) navigate('/success'); })
+      .then(data => {
+        if (data.success) navigate('/success');
+        else alert(data.message || t('err_booking_fail'));
+      })
       .catch(() => alert(t('err_server_unavail')));
   };
 
