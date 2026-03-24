@@ -283,7 +283,8 @@ app.put("/api/profile/:id", upload.single("avatar"), (req, res) => {
   const avatar = req.file ? `/images/${req.file.filename}` : null;
   db.prepare(`UPDATE users SET name=COALESCE(?,name), group_name=COALESCE(?,group_name), avatar=COALESCE(?,avatar) WHERE id=?`)
     .run(name || null, group_name || null, avatar, req.params.id);
-  const user = db.prepare("SELECT * FROM users WHERE id=?").get(req.params.id);
+  const raw = db.prepare("SELECT * FROM users WHERE id=?").get(req.params.id);
+  const { password: _pw, ...user } = raw;
   res.json({ success: true, user });
 });
 
@@ -365,8 +366,18 @@ app.put("/api/sections/:id", upload.single("image"), (req, res) => {
 });
 
 app.delete("/api/sections/:id", (req, res) => {
-  db.prepare("DELETE FROM sections WHERE id=?").run(req.params.id);
-  res.json({ success: true });
+  try {
+    const deleteSection = db.transaction(() => {
+      db.prepare("DELETE FROM bookings WHERE sectionId=?").run(req.params.id);
+      db.prepare("DELETE FROM schedule WHERE section_id=?").run(req.params.id);
+      db.prepare("DELETE FROM attendance WHERE section_id=?").run(req.params.id);
+      db.prepare("DELETE FROM sections WHERE id=?").run(req.params.id);
+    });
+    deleteSection();
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ success: false, message: "Не удалось удалить секцию" });
+  }
 });
 
 /* =========================================================
@@ -625,12 +636,23 @@ app.get("/api/admin/users", requireAdmin, (req, res) => {
 });
 
 app.delete("/api/admin/users/:id", requireAdmin, (req, res) => {
-  const target = db.prepare("SELECT role FROM users WHERE id=?").get(req.params.id);
+  const target = db.prepare("SELECT role, name FROM users WHERE id=?").get(req.params.id);
   if (!target) return res.json({ success: false, message: "Пользователь не найден" });
   if (target.role === "admin") return res.json({ success: false, message: "Нельзя удалить администратора" });
-  secLog("WARN", req.ip, `Admin deleted user id=${req.params.id}`);
-  db.prepare("DELETE FROM users WHERE id=?").run(req.params.id);
-  res.json({ success: true });
+  try {
+    const deleteUser = db.transaction(() => {
+      db.prepare("DELETE FROM messages WHERE sender_id=? OR receiver_id=?").run(req.params.id, req.params.id);
+      db.prepare("UPDATE bookings SET status='cancelled' WHERE user=?").run(target.name);
+      db.prepare("DELETE FROM attendance WHERE student_name=? OR coach_id=?").run(target.name, req.params.id);
+      db.prepare("DELETE FROM users WHERE id=?").run(req.params.id);
+    });
+    deleteUser();
+    secLog("WARN", req.ip, `Admin deleted user id=${req.params.id}`);
+    res.json({ success: true });
+  } catch (err) {
+    secLog("WARN", req.ip, `Failed to delete user id=${req.params.id}: ${err.message}`);
+    res.status(500).json({ success: false, message: "Не удалось удалить пользователя" });
+  }
 });
 
 app.get("/api/admin/bookings", requireAdmin, (req, res) => {
