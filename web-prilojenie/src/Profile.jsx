@@ -73,7 +73,7 @@ function Profile() {
   };
 
   const updateName = () => {
-    if (!newName.trim()) return alert("Введите новое имя");
+    if (!newName.trim()) return alert(t("profile_enter_name"));
     const fd = new FormData();
     fd.append("name", newName.trim());
     fetch(`/api/profile/${user.id}`, { method: "PUT", body: fd })
@@ -82,10 +82,16 @@ function Profile() {
         if (d.success) {
           const updated = { ...user, name: d.user.name };
           localStorage.setItem("user", JSON.stringify(updated));
-          alert("Имя обновлено");
+          alert(t("profile_name_updated"));
         }
       })
       .catch(() => alert(t("err_server_short")));
+  };
+
+  const statusLabel = (status) => {
+    if (status === "approved") return t("adm_status_approved");
+    if (status === "cancelled") return t("adm_status_cancelled");
+    return t("adm_status_pending");
   };
 
   const changePassword = () => {
@@ -153,17 +159,17 @@ function Profile() {
             }}
           >
             <summary style={{ cursor: "pointer", fontWeight: 600 }}>
-              Изменить имя
+              {t("profile_change_name")}
             </summary>
             <div style={{ marginTop: 10 }}>
               <input
                 className="input-field"
-                placeholder="Новое имя"
+                placeholder={t("profile_new_name_placeholder")}
                 value={newName}
                 onChange={(e) => setNewName(e.target.value)}
               />
               <button className="login-btn" onClick={updateName}>
-                Сохранить имя
+                {t("profile_save_name")}
               </button>
             </div>
           </details>
@@ -229,15 +235,17 @@ function Profile() {
               <br />👨‍🏫 {s.coach}
               <br />
               <span style={{ color: "#888", fontSize: 12 }}>
-                {t("profile_booking_status")} {s.status}
+                {t("profile_booking_status")} {statusLabel(s.status)}
               </span>
               <br />
-              <button
-                className="login-btn"
-                style={{ background: "#f44336", marginTop: 5 }}
-                onClick={() => cancelBooking(s.bookingId)}>
-                {t("profile_cancel_booking")}
-              </button>
+              {s.status !== "approved" && (
+                <button
+                  className="login-btn"
+                  style={{ background: "#f44336", marginTop: 5 }}
+                  onClick={() => cancelBooking(s.bookingId)}>
+                  {t("profile_cancel_booking")}
+                </button>
+              )}
             </div>
           ))
         ) : (

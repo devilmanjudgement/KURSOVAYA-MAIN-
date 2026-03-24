@@ -281,7 +281,7 @@ function TeacherPanel() {
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px" }}>
             <label style={{ fontSize: "13px", color: "var(--text-muted)" }}>
-              {t("tp_section_color") || "Цвет секции"}:
+              {t("tp_section_color")}:
             </label>
             <input type="color" value={form.color}
               onChange={(e) => setForm({ ...form, color: e.target.value })}
@@ -336,7 +336,7 @@ function TeacherPanel() {
                 placeholder={t("tp_max_students")} style={{ marginBottom: "8px" }} />
               <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px" }}>
                 <label style={{ fontSize: "13px", color: "var(--text-muted)" }}>
-                  {t("tp_section_color") || "Цвет секции"}:
+                  {t("tp_section_color")}:
                 </label>
                 <input type="color" value={editForm.color}
                   onChange={(e) => setEditForm({ ...editForm, color: e.target.value })}
@@ -345,7 +345,7 @@ function TeacherPanel() {
               </div>
               <div style={{ marginBottom: "8px" }}>
                 <label style={{ fontSize: "13px", color: "var(--text-muted)", display: "block", marginBottom: "4px" }}>
-                  {t("tp_section_photo") || "Фото секции"}:
+                  {t("tp_section_photo")}:
                 </label>
                 <input type="file" accept="image/*" onChange={(e) => setEditImageFile(e.target.files[0])} />
                 {editImageFile && (
