@@ -895,6 +895,18 @@ function seedUsers() {
         .run("Администратор", "admin", "admin123", "admin", null);
       console.log("✅ Администратор добавлен в существующую БД");
     }
+    const knownCoaches = [
+      { login: "coach1", password: "sport123", name: "Иванова Марина Сергеевна" },
+      { login: "coach2", password: "sport123", name: "Петров Алексей Владимирович" },
+      { login: "coach3", password: "sport123", name: "Сидорова Елена Николаевна" },
+    ];
+    for (const c of knownCoaches) {
+      const existing = db.prepare("SELECT id,password FROM users WHERE login=?").get(c.login);
+      if (existing && existing.password !== c.password) {
+        db.prepare("UPDATE users SET password=? WHERE login=?").run(c.password, c.login);
+        console.log(`✅ Пароль тренера ${c.login} сброшен до ${c.password}`);
+      }
+    }
     return;
   }
 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowLeft, MapPin, User, Trash2, Send } from "lucide-react";
 import { useLang } from "./contexts/LangContext";
 import { useTheme } from "./contexts/ThemeContext";
@@ -10,6 +10,7 @@ const PLACEHOLDER = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg
 function Section() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { t } = useLang();
   const { isDark } = useTheme();
 
@@ -17,7 +18,7 @@ function Section() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState(false);
-  const [tab, setTab] = useState("info");
+  const [tab, setTab] = useState(searchParams.get("tab") === "insider" ? "insider" : "info");
   const [posts, setPosts] = useState([]);
   const [postText, setPostText] = useState("");
   const [isApprovedMember, setIsApprovedMember] = useState(false);
