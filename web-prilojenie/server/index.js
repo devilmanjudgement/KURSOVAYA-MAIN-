@@ -300,44 +300,44 @@ app.post("/api/register", rateLimit(60_000, 5), (req, res) => {
 });
 
 /* =========================================================
-   SMS-верификация (фиктивная)
+   Email-верификация (заглушка)
 ========================================================= */
-const phoneCodes = new Map();
+const emailCodes = new Map();
 
 app.post("/api/auth/send-code", rateLimit(60_000, 5), (req, res) => {
-  const phone = sanitize(req.body.phone || "").replace(/[\s\-()]/g, "");
-  if (!phone || !/^\+?\d{10,15}$/.test(phone)) {
-    return res.json({ success: false, message: "Некорректный номер телефона" });
+  const email = sanitize(req.body.email || "").toLowerCase().trim();
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return res.json({ success: false, message: "Некорректный адрес электронной почты" });
   }
 
   const code = String(Math.floor(1000 + Math.random() * 9000));
-  phoneCodes.set(phone, { code, expires: Date.now() + 5 * 60_000 });
+  emailCodes.set(email, { code, expires: Date.now() + 10 * 60_000 });
 
-  secLog("INFO", req.ip, `SMS code sent to ${phone.slice(0, 6)}****`);
-  console.log(`📱 SMS-код для ${phone}: ${code}`);
+  secLog("INFO", req.ip, `Email code sent to ${email.split("@")[0].slice(0, 3)}***@${email.split("@")[1]}`);
+  console.log(`📧 Код подтверждения для ${email}: ${code}`);
 
   res.json({ success: true, _devCode: code });
 });
 
 app.post("/api/auth/verify-code", rateLimit(60_000, 10), (req, res) => {
-  const phone = sanitize(req.body.phone || "").replace(/[\s\-()]/g, "");
+  const email = sanitize(req.body.email || "").toLowerCase().trim();
   const code = sanitize(req.body.code || "");
-  const entry = phoneCodes.get(phone);
+  const entry = emailCodes.get(email);
 
   if (!entry) {
-    secLog("WARN", req.ip, `Code verify failed: no code for ${phone.slice(0,6)}****`);
+    secLog("WARN", req.ip, `Code verify failed: no code for ${email}`);
     return res.json({ success: false, message: "Код не найден. Запросите новый" });
   }
   if (Date.now() > entry.expires) {
-    phoneCodes.delete(phone);
+    emailCodes.delete(email);
     return res.json({ success: false, message: "Код истёк. Запросите новый" });
   }
   if (entry.code !== code) {
-    secLog("WARN", req.ip, `Wrong code for ${phone.slice(0,6)}****`);
+    secLog("WARN", req.ip, `Wrong code for ${email}`);
     return res.json({ success: false, message: "Неверный код" });
   }
 
-  phoneCodes.delete(phone);
+  emailCodes.delete(email);
   res.json({ success: true });
 });
 

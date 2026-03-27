@@ -3,8 +3,6 @@ import { useNavigate } from "react-router-dom";
 import { useLang } from "./contexts/LangContext";
 import "./App.css";
 
-const CONSENT_LINK = "https://www.consultant.ru/document/cons_doc_LAW_61801/";
-
 function Register() {
   const navigate = useNavigate();
   const { t } = useLang();
@@ -18,7 +16,7 @@ function Register() {
   const [registryData, setRegistryData] = useState(null);
   const [registryRequired, setRegistryRequired] = useState(null);
 
-  const [form, setForm] = useState({ login: "", password: "", phone: "" });
+  const [form, setForm] = useState({ login: "", password: "", email: "" });
   const [code, setCode] = useState("");
   const [sentCode, setSentCode] = useState("");
   const [error, setError] = useState("");
@@ -26,17 +24,6 @@ function Register() {
   const debounceTimer = useRef(null);
 
   useEffect(() => {
-    fetch("/api/registry/check/__probe__")
-      .then((r) => r.json())
-      .then((d) => setRegistryRequired(!d.found && d.found !== undefined ? null : null))
-      .catch(() => {});
-
-    fetch("/api/admin/stats-public").catch(() => {});
-
-    fetch("/api/registry/check/_registry_size_probe_")
-      .then(() => setRegistryRequired(true))
-      .catch(() => setRegistryRequired(false));
-
     checkRegistryEnabled();
   }, []);
 
@@ -75,10 +62,9 @@ function Register() {
     }
   };
 
-  const handleChange = (e) =>
-    setForm((f) => ({ ...f, [e.target.name]: e.target.value }));
+  const handleChange = (e) => setForm((f) => ({ ...f, [e.target.name]: e.target.value }));
 
-  const validatePhone = (p) => /^\+?\d{10,15}$/.test(p.replace(/[\s\-()]/g, ""));
+  const validateEmail = (e) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e.trim());
 
   const fullName = registryData
     ? [registryData.last_name, registryData.first_name, registryData.middle_name].filter(Boolean).join(" ")
@@ -90,7 +76,7 @@ function Register() {
     setError("");
 
     if (registryRequired !== false) {
-      if (!studentId.trim()) return setError(t("reg_student_id") + " — " + t("err_no_name").replace("имя", "студбилет"));
+      if (!studentId.trim()) return setError(t("reg_student_id") + ": " + t("err_no_name").replace("ФИО", "студбилет"));
       if (idStatus !== "found") return setError(t("reg_id_not_found"));
     }
 
@@ -98,8 +84,8 @@ function Register() {
     if (form.login.trim().length < 3) return setError(t("err_login_short"));
     if (!form.password.trim()) return setError(t("err_no_pass"));
     if (form.password.trim().length < 6) return setError(t("err_pass_short"));
-    if (!form.phone.trim()) return setError(t("err_no_phone"));
-    if (!validatePhone(form.phone)) return setError(t("err_bad_phone"));
+    if (!form.email.trim()) return setError(t("err_no_email"));
+    if (!validateEmail(form.email)) return setError(t("err_bad_email"));
     if (!agreed) return setError(t("err_no_agree"));
 
     setLoading(true);
@@ -107,7 +93,7 @@ function Register() {
       const res = await fetch("/api/auth/send-code", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone: form.phone }),
+        body: JSON.stringify({ email: form.email.trim() }),
       });
       const data = await res.json();
       if (data.success) {
@@ -133,7 +119,7 @@ function Register() {
       const verifyRes = await fetch("/api/auth/verify-code", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone: form.phone, code }),
+        body: JSON.stringify({ email: form.email.trim(), code }),
       });
       const verifyData = await verifyRes.json();
       if (!verifyData.success) { setLoading(false); return setError(t("err_code_wrong")); }
@@ -192,7 +178,6 @@ function Register() {
         <div className="header" style={{ paddingTop: "36px", textAlign: "center" }}>
           <h1 className="app-title" style={{ fontSize: "26px" }}>{t("reg_title")}</h1>
           <p className="app-subtitle">{t("reg_subtitle")}</p>
-
           <div style={{ display: "flex", justifyContent: "center", gap: "8px", marginTop: "12px" }}>
             {[1, 2].map((s) => (
               <div key={s} style={{
@@ -215,19 +200,19 @@ function Register() {
                 <p style={{ fontSize: "12px", color: "#555", marginBottom: "8px" }}>
                   {t("reg_id_hint")}
                 </p>
-
                 <input
                   style={{
                     ...inputStyle,
-                    borderColor: idStatus === "found" ? "#16a34a" : idStatus === "not_found" || idStatus === "already" ? "#dc2626" : "#e5e5e5",
                     marginBottom: "4px",
+                    borderColor: idStatus === "found" ? "#16a34a"
+                      : (idStatus === "not_found" || idStatus === "already") ? "#dc2626"
+                      : "#e5e5e5",
                   }}
                   value={studentId}
                   onChange={handleStudentIdChange}
                   placeholder={t("reg_student_id")}
                   maxLength={30}
                 />
-
                 {idStatus !== "idle" && (
                   <div style={{
                     fontSize: "12px",
@@ -235,21 +220,19 @@ function Register() {
                     marginBottom: "10px",
                     padding: "4px 8px",
                     borderRadius: "8px",
-                    background: idStatus === "found" ? "#f0fdf4" : idStatus === "not_found" || idStatus === "already" ? "#fff0f0" : "#f3f4f6",
+                    background: idStatus === "found" ? "#f0fdf4"
+                      : (idStatus === "not_found" || idStatus === "already") ? "#fff0f0"
+                      : "#f3f4f6",
                   }}>
                     {idStatusIcon[idStatus]} {idStatusText[idStatus]}
                   </div>
                 )}
-
                 {idStatus === "found" && registryData && (
                   <div style={{
-                    background: "#f0fdf4",
-                    border: "1.5px solid #bbf7d0",
-                    borderRadius: "12px",
-                    padding: "12px 14px",
-                    marginBottom: "12px",
+                    background: "#f0fdf4", border: "1.5px solid #bbf7d0",
+                    borderRadius: "12px", padding: "12px 14px", marginBottom: "12px",
                   }}>
-                    <div style={{ fontSize: "13px", color: "#15803d", fontWeight: 700, marginBottom: "4px" }}>
+                    <div style={{ fontSize: "12px", color: "#15803d", fontWeight: 700, marginBottom: "4px" }}>
                       {t("reg_fullname_auto")}
                     </div>
                     <div style={{ fontSize: "15px", fontWeight: 600, color: "#111" }}>{fullName}</div>
@@ -270,6 +253,7 @@ function Register() {
               onChange={handleChange}
               placeholder={t("field_login")}
               maxLength={50}
+              autoComplete="username"
             />
             <input
               style={inputStyle}
@@ -279,35 +263,33 @@ function Register() {
               onChange={handleChange}
               placeholder={t("field_password")}
               maxLength={100}
+              autoComplete="new-password"
             />
-
-            <div style={{ position: "relative", marginBottom: "10px" }}>
-              <input
-                style={{ ...inputStyle, marginBottom: 0 }}
-                name="phone"
-                value={form.phone}
-                onChange={handleChange}
-                placeholder={t("field_phone")}
-                maxLength={20}
-                type="tel"
-              />
-            </div>
+            <input
+              style={inputStyle}
+              type="email"
+              name="email"
+              value={form.email}
+              onChange={handleChange}
+              placeholder={t("field_email")}
+              maxLength={120}
+              autoComplete="email"
+            />
 
             <label style={{
               display: "flex", alignItems: "flex-start", gap: "10px",
-              fontSize: "12px", color: "#555", cursor: "pointer", marginTop: "6px", marginBottom: "14px",
+              fontSize: "12px", color: "#555", cursor: "pointer",
+              marginTop: "6px", marginBottom: "14px", lineHeight: "1.5",
             }}>
               <input
                 type="checkbox"
                 checked={agreed}
                 onChange={(e) => setAgreed(e.target.checked)}
-                style={{ marginTop: "2px", flexShrink: 0, accentColor: "#0056b3" }}
+                style={{ marginTop: "3px", flexShrink: 0, accentColor: "#0056b3", width: "16px", height: "16px" }}
               />
               <span>
                 {t("reg_agree")}{" "}
-                <a href={CONSENT_LINK} target="_blank" rel="noreferrer" style={{ color: "#0056b3" }}>
-                  {t("reg_law")}
-                </a>
+                <span style={{ color: "#0056b3", fontWeight: 600 }}>{t("reg_law")}</span>
               </span>
             </label>
 
@@ -320,8 +302,7 @@ function Register() {
               </div>
             )}
 
-            <button type="submit" className="login-btn" disabled={loading}
-              style={{ opacity: loading ? 0.7 : 1 }}>
+            <button type="submit" className="login-btn" disabled={loading} style={{ opacity: loading ? 0.7 : 1 }}>
               {loading ? t("reg_sending") : t("reg_send_code")}
             </button>
 
@@ -343,17 +324,27 @@ function Register() {
 
             <div style={{
               background: "#f0f6ff", border: "1.5px solid #c7d9f5",
-              borderRadius: "14px", padding: "16px", marginBottom: "16px", textAlign: "center",
+              borderRadius: "14px", padding: "16px", marginBottom: "20px", textAlign: "center",
             }}>
-              <div style={{ fontSize: "28px", marginBottom: "6px" }}>📱</div>
-              <p style={{ fontSize: "13px", color: "#444", margin: 0 }}>{t("reg_sms_sent")}</p>
-              <p style={{ fontSize: "15px", fontWeight: 700, color: "#0056b3", margin: "4px 0 0" }}>
-                {form.phone}
+              <div style={{ fontSize: "32px", marginBottom: "8px" }}>📧</div>
+              <p style={{ fontSize: "13px", color: "#444", margin: "0 0 4px" }}>
+                {t("reg_email_sent")}
+              </p>
+              <p style={{ fontSize: "15px", fontWeight: 700, color: "#0056b3", margin: 0 }}>
+                {form.email}
               </p>
               {sentCode && (
-                <p style={{ fontSize: "11px", color: "#aaa", marginTop: "8px", margin: "8px 0 0" }}>
-                  ({t("reg_demo")} <strong style={{ color: "#555" }}>{sentCode}</strong>)
-                </p>
+                <div style={{
+                  marginTop: "12px", background: "#fff", border: "1px dashed #c7d9f5",
+                  borderRadius: "10px", padding: "10px 14px", display: "inline-block",
+                }}>
+                  <p style={{ fontSize: "11px", color: "#aaa", margin: "0 0 4px" }}>
+                    {t("reg_demo")}:
+                  </p>
+                  <p style={{ fontSize: "26px", fontWeight: 800, color: "#0056b3", margin: 0, letterSpacing: "6px" }}>
+                    {sentCode}
+                  </p>
+                </div>
               )}
             </div>
 
@@ -366,6 +357,7 @@ function Register() {
                 onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 4))}
                 placeholder="• • • •"
                 maxLength={4}
+                inputMode="numeric"
                 style={{
                   width: "140px", padding: "14px 10px", borderRadius: "14px",
                   border: "2px solid #0056b3", fontSize: "28px", letterSpacing: "12px",
