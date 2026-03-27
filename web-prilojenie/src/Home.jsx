@@ -169,7 +169,7 @@ function Home() {
                   transition: "all 0.2s",
                 }}
               >
-                {tabKey === "all" ? t("home_tab_all") : t("home_tab_insider")}
+                {tabKey === "all" ? "Все секции" : "Для своих"}
                 {tabKey === "insider" && mySections.length > 0 && homeTab !== "insider" && (
                   <span style={{
                     display: "inline-block", background: "#ff5722", color: "#fff",
@@ -228,16 +228,16 @@ function Home() {
               <div style={{ textAlign: "center", color: "var(--text-muted)", padding: "40px 20px" }}>
                 <div style={{ fontSize: "48px", marginBottom: "12px" }}>🔒</div>
                 <p style={{ fontSize: "15px", fontWeight: 600, marginBottom: "6px" }}>
-                  {isCoach ? t("home_insider_empty_coach") : t("home_insider_empty_student")}
+                  {isCoach ? "У вас пока нет секций" : "Вы пока не зачислены ни в одну секцию"}
                 </p>
                 <p style={{ fontSize: "13px" }}>
-                  {isCoach ? t("home_insider_hint_coach") : t("home_insider_hint_student")}
+                  {isCoach ? "Здесь ваши секции — нажмите, чтобы открыть ленту объявлений" : "Здесь будут секции, в которых вы состоите"}
                 </p>
               </div>
             ) : (
               <>
                 <p style={{ fontSize: "12px", color: "var(--text-muted)", padding: "0 20px", marginBottom: "4px" }}>
-                  {isCoach ? t("home_insider_hint_coach") : t("home_insider_hint_student")}
+                  {isCoach ? "Нажмите на секцию, чтобы открыть ленту объявлений" : "Ваши секции — нажмите, чтобы читать объявления"}
                 </p>
                 <div className="sections-grid" style={{ padding: "10px 14px 0" }}>
                   {mySections.map((section) => (
