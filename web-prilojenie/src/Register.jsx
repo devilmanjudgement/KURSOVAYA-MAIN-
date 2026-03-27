@@ -289,7 +289,14 @@ function Register() {
               />
               <span>
                 {t("reg_agree")}{" "}
-                <span style={{ color: "#0056b3", fontWeight: 600 }}>{t("reg_law")}</span>
+                <a
+                  href="https://www.consultant.ru/document/cons_doc_LAW_61801/"
+                  target="_blank"
+                  rel="noreferrer"
+                  style={{ color: "#0056b3", fontWeight: 600 }}
+                >
+                  {t("reg_law")}
+                </a>
               </span>
             </label>
 
