@@ -6,7 +6,7 @@ function AdminPanel() {
   const navigate = useNavigate();
   const { t } = useLang();
 
-  const TABS = [t("adm_tab_stats"), t("adm_tab_users"), t("adm_tab_sections"), t("adm_tab_bookings"), t("adm_tab_logs")];
+  const TABS = [t("adm_tab_stats"), t("adm_tab_users"), t("adm_tab_sections"), t("adm_tab_bookings"), t("adm_tab_logs"), t("adm_registry")];
 
   const [tab, setTab] = useState(0);
   const [stats, setStats] = useState(null);
@@ -14,6 +14,10 @@ function AdminPanel() {
   const [sections, setSections] = useState([]);
   const [bookings, setBookings] = useState([]);
   const [logs, setLogs] = useState([]);
+  const [registry, setRegistry] = useState([]);
+  const [regSearch, setRegSearch] = useState("");
+  const [regUploading, setRegUploading] = useState(false);
+  const [regUploadMsg, setRegUploadMsg] = useState("");
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -34,22 +38,59 @@ function AdminPanel() {
   const fetchAll = async () => {
     setLoading(true);
     try {
-      const [s, u, sec, b, l] = await Promise.all([
+      const [s, u, sec, b, l, reg] = await Promise.all([
         fetch("/api/admin/stats", { headers: adminHeaders }).then((r) => r.json()),
         fetch("/api/admin/users", { headers: adminHeaders }).then((r) => r.json()),
         fetch("/api/sections").then((r) => r.json()),
         fetch("/api/admin/bookings", { headers: adminHeaders }).then((r) => r.json()),
         fetch("/api/admin/logs", { headers: adminHeaders }).then((r) => r.json()),
+        fetch("/api/admin/registry", { headers: adminHeaders }).then((r) => r.json()),
       ]);
       setStats(s);
       setUsers(u);
       setSections(sec);
       setBookings(b);
       setLogs(l);
+      setRegistry(Array.isArray(reg) ? reg : []);
     } catch (e) {
       console.error(e);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchRegistry = async () => {
+    const reg = await fetch("/api/admin/registry", { headers: adminHeaders }).then((r) => r.json());
+    setRegistry(Array.isArray(reg) ? reg : []);
+  };
+
+  const deleteRegistryEntry = async (studentId) => {
+    if (!confirm(`Удалить запись ${studentId} из реестра?`)) return;
+    await fetch(`/api/admin/registry/${encodeURIComponent(studentId)}`, { method: "DELETE", headers: adminHeaders });
+    fetchRegistry();
+  };
+
+  const handleRegistryUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setRegUploading(true);
+    setRegUploadMsg("");
+    const fd = new FormData();
+    fd.append("file", file);
+    try {
+      const res = await fetch("/api/admin/registry/upload", { method: "POST", headers: adminHeaders, body: fd });
+      const data = await res.json();
+      if (data.success) {
+        setRegUploadMsg(`✅ ${t("adm_reg_upload_ok")}: ${data.imported}`);
+        fetchRegistry();
+      } else {
+        setRegUploadMsg(`❌ ${data.message || t("adm_reg_upload_err")}`);
+      }
+    } catch {
+      setRegUploadMsg(`❌ ${t("adm_reg_upload_err")}`);
+    } finally {
+      setRegUploading(false);
+      e.target.value = "";
     }
   };
 
@@ -363,6 +404,124 @@ function AdminPanel() {
             </div>
           </div>
         )}
+        {!loading && tab === 5 && (
+          <>
+            <div style={{
+              background: "#fff", borderRadius: "12px", padding: "20px",
+              boxShadow: "0 1px 4px rgba(0,0,0,0.07)", marginBottom: "16px",
+            }}>
+              <div style={{ fontWeight: 700, fontSize: "15px", color: "#111827", marginBottom: "6px" }}>
+                {t("adm_reg_upload_title")}
+              </div>
+              <div style={{ fontSize: "12px", color: "#6b7280", marginBottom: "14px" }}>
+                📋 {t("adm_reg_upload_hint")}
+              </div>
+              <label style={{
+                display: "inline-block", background: "#0056b3", color: "#fff",
+                borderRadius: "8px", padding: "9px 20px", fontSize: "13px", fontWeight: 600,
+                cursor: regUploading ? "not-allowed" : "pointer", opacity: regUploading ? 0.7 : 1,
+              }}>
+                {regUploading ? "⏳ Загружаем..." : `📤 ${t("adm_reg_upload_btn")}`}
+                <input
+                  type="file" accept=".csv,text/csv"
+                  style={{ display: "none" }}
+                  onChange={handleRegistryUpload}
+                  disabled={regUploading}
+                />
+              </label>
+              {regUploadMsg && (
+                <div style={{
+                  marginTop: "10px", fontSize: "13px",
+                  color: regUploadMsg.startsWith("✅") ? "#15803d" : "#dc2626",
+                }}>
+                  {regUploadMsg}
+                </div>
+              )}
+              <div style={{ marginTop: "12px", fontSize: "13px", color: "#6b7280" }}>
+                {t("adm_reg_count")}: <b style={{ color: "#111827" }}>{registry.length}</b>
+              </div>
+            </div>
+
+            <div style={{ display: "flex", gap: "12px", marginBottom: "12px" }}>
+              <input
+                value={regSearch}
+                onChange={(e) => setRegSearch(e.target.value)}
+                placeholder={t("adm_search")}
+                style={{
+                  flex: 1, padding: "10px 14px", borderRadius: "10px",
+                  border: "1.5px solid #e5e7eb", fontSize: "14px", outline: "none",
+                }}
+              />
+            </div>
+
+            {registry.length === 0 ? (
+              <div style={{ textAlign: "center", padding: "40px", color: "#6b7280" }}>
+                {t("adm_reg_empty")}
+              </div>
+            ) : (
+              <div style={{ background: "#fff", borderRadius: "12px", overflow: "hidden", boxShadow: "0 1px 4px rgba(0,0,0,0.07)" }}>
+                <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                  <thead>
+                    <tr style={{ background: "#f8fafc" }}>
+                      {[t("adm_reg_col_id"), t("adm_reg_col_name"), t("adm_reg_col_group"), t("adm_reg_col_login"), ""].map((h) => (
+                        <th key={h} style={{
+                          padding: "12px 16px", textAlign: "left", fontSize: "12px",
+                          fontWeight: 700, color: "#6b7280", textTransform: "uppercase",
+                          borderBottom: "1px solid #e5e7eb",
+                        }}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {registry
+                      .filter((r) => {
+                        const q = regSearch.toLowerCase();
+                        return !q || r.student_id?.toLowerCase().includes(q) ||
+                          r.last_name?.toLowerCase().includes(q) ||
+                          r.first_name?.toLowerCase().includes(q) ||
+                          r.group_name?.toLowerCase().includes(q);
+                      })
+                      .map((r) => {
+                        const fio = [r.last_name, r.first_name, r.middle_name].filter(Boolean).join(" ");
+                        return (
+                          <tr key={r.student_id} style={{ borderBottom: "1px solid #f3f4f6" }}>
+                            <td style={{ padding: "10px 16px", fontSize: "13px", color: "#374151", fontWeight: 600 }}>
+                              {r.student_id}
+                            </td>
+                            <td style={{ padding: "10px 16px", fontSize: "13px", color: "#111827" }}>{fio}</td>
+                            <td style={{ padding: "10px 16px", fontSize: "13px", color: "#6b7280" }}>{r.group_name || "—"}</td>
+                            <td style={{ padding: "10px 16px", fontSize: "12px" }}>
+                              {r.login ? (
+                                <span style={{ background: "#dcfce7", color: "#15803d", borderRadius: "6px", padding: "2px 8px", fontWeight: 600 }}>
+                                  {t("adm_reg_registered")}
+                                </span>
+                              ) : (
+                                <span style={{ background: "#f3f4f6", color: "#9ca3af", borderRadius: "6px", padding: "2px 8px" }}>
+                                  {t("adm_reg_not_registered")}
+                                </span>
+                              )}
+                            </td>
+                            <td style={{ padding: "10px 16px" }}>
+                              <button
+                                onClick={() => deleteRegistryEntry(r.student_id)}
+                                style={{
+                                  background: "#fff0f0", border: "1px solid #fca5a5", color: "#dc2626",
+                                  borderRadius: "6px", padding: "4px 10px", fontSize: "12px", cursor: "pointer",
+                                }}
+                              >
+                                {t("delete")}
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </>
+        )}
+
       </div>
     </div>
   );

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useLang } from "./contexts/LangContext";
 import "./App.css";
@@ -13,26 +13,87 @@ function Register() {
   const [loading, setLoading] = useState(false);
   const [agreed, setAgreed] = useState(false);
 
-  const [form, setForm] = useState({
-    name: "",
-    login: "",
-    password: "",
-    group: "",
-    phone: "",
-  });
+  const [studentId, setStudentId] = useState("");
+  const [idStatus, setIdStatus] = useState("idle");
+  const [registryData, setRegistryData] = useState(null);
+  const [registryRequired, setRegistryRequired] = useState(null);
+
+  const [form, setForm] = useState({ login: "", password: "", phone: "" });
   const [code, setCode] = useState("");
   const [sentCode, setSentCode] = useState("");
   const [error, setError] = useState("");
+
+  const debounceTimer = useRef(null);
+
+  useEffect(() => {
+    fetch("/api/registry/check/__probe__")
+      .then((r) => r.json())
+      .then((d) => setRegistryRequired(!d.found && d.found !== undefined ? null : null))
+      .catch(() => {});
+
+    fetch("/api/admin/stats-public").catch(() => {});
+
+    fetch("/api/registry/check/_registry_size_probe_")
+      .then(() => setRegistryRequired(true))
+      .catch(() => setRegistryRequired(false));
+
+    checkRegistryEnabled();
+  }, []);
+
+  const checkRegistryEnabled = async () => {
+    try {
+      const r = await fetch("/api/registry/check/000");
+      const d = await r.json();
+      setRegistryRequired(d.found !== undefined);
+    } catch {
+      setRegistryRequired(false);
+    }
+  };
+
+  const lookupStudentId = (id) => {
+    if (!id.trim()) { setIdStatus("idle"); setRegistryData(null); return; }
+    setIdStatus("checking");
+    fetch(`/api/registry/check/${encodeURIComponent(id.trim())}`)
+      .then((r) => r.json())
+      .then((d) => {
+        if (!d.found) { setIdStatus("not_found"); setRegistryData(null); return; }
+        if (d.alreadyRegistered) { setIdStatus("already"); setRegistryData(null); return; }
+        setIdStatus("found");
+        setRegistryData(d.data);
+      })
+      .catch(() => { setIdStatus("not_found"); setRegistryData(null); });
+  };
+
+  const handleStudentIdChange = (e) => {
+    const val = e.target.value;
+    setStudentId(val);
+    setIdStatus("idle");
+    setRegistryData(null);
+    clearTimeout(debounceTimer.current);
+    if (val.trim().length >= 3) {
+      debounceTimer.current = setTimeout(() => lookupStudentId(val), 500);
+    }
+  };
 
   const handleChange = (e) =>
     setForm((f) => ({ ...f, [e.target.name]: e.target.value }));
 
   const validatePhone = (p) => /^\+?\d{10,15}$/.test(p.replace(/[\s\-()]/g, ""));
 
+  const fullName = registryData
+    ? [registryData.last_name, registryData.first_name, registryData.middle_name].filter(Boolean).join(" ")
+    : "";
+  const groupName = registryData?.group_name || "";
+
   const sendCode = async (e) => {
     e.preventDefault();
     setError("");
-    if (!form.name.trim()) return setError(t("err_no_name"));
+
+    if (registryRequired !== false) {
+      if (!studentId.trim()) return setError(t("reg_student_id") + " — " + t("err_no_name").replace("имя", "студбилет"));
+      if (idStatus !== "found") return setError(t("reg_id_not_found"));
+    }
+
     if (!form.login.trim()) return setError(t("err_no_login"));
     if (form.login.trim().length < 3) return setError(t("err_login_short"));
     if (!form.password.trim()) return setError(t("err_no_pass"));
@@ -75,29 +136,28 @@ function Register() {
         body: JSON.stringify({ phone: form.phone, code }),
       });
       const verifyData = await verifyRes.json();
-      if (!verifyData.success) {
-        setLoading(false);
-        return setError(t("err_code_wrong"));
+      if (!verifyData.success) { setLoading(false); return setError(t("err_code_wrong")); }
+
+      const body = {
+        login: form.login.trim(),
+        password: form.password.trim(),
+        role: "student",
+      };
+      if (registryRequired !== false && idStatus === "found") {
+        body.student_id = studentId.trim();
+      } else {
+        body.name = fullName || form.login.trim();
+        body.group_name = groupName;
       }
 
       const regRes = await fetch("/api/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: form.name.trim(),
-          login: form.login.trim(),
-          password: form.password.trim(),
-          group_name: form.group.trim() || null,
-          role: "student",
-        }),
+        body: JSON.stringify(body),
       });
       const regData = await regRes.json();
-      if (regData.success) {
-        alert(t("reg_success"));
-        navigate("/");
-      } else {
-        setError(regData.message || t("err_reg"));
-      }
+      if (regData.success) { alert(t("reg_success")); navigate("/"); }
+      else setError(regData.message || t("err_reg"));
     } catch {
       setError(t("err_server"));
     } finally {
@@ -115,6 +175,15 @@ function Register() {
     marginBottom: "10px",
     boxSizing: "border-box",
     outline: "none",
+  };
+
+  const idStatusColor = { found: "#15803d", not_found: "#dc2626", already: "#d97706", checking: "#6b7280" };
+  const idStatusIcon = { found: "✅", not_found: "❌", already: "⚠️", checking: "⏳" };
+  const idStatusText = {
+    found: t("reg_id_found"),
+    not_found: t("reg_id_not_found"),
+    already: t("reg_id_already"),
+    checking: t("reg_checking_id"),
   };
 
   return (
@@ -141,14 +210,59 @@ function Register() {
               {t("reg_step1")}
             </p>
 
-            <input
-              style={inputStyle}
-              name="name"
-              value={form.name}
-              onChange={handleChange}
-              placeholder={t("field_name")}
-              maxLength={100}
-            />
+            {registryRequired !== false && (
+              <>
+                <p style={{ fontSize: "12px", color: "#555", marginBottom: "8px" }}>
+                  {t("reg_id_hint")}
+                </p>
+
+                <input
+                  style={{
+                    ...inputStyle,
+                    borderColor: idStatus === "found" ? "#16a34a" : idStatus === "not_found" || idStatus === "already" ? "#dc2626" : "#e5e5e5",
+                    marginBottom: "4px",
+                  }}
+                  value={studentId}
+                  onChange={handleStudentIdChange}
+                  placeholder={t("reg_student_id")}
+                  maxLength={30}
+                />
+
+                {idStatus !== "idle" && (
+                  <div style={{
+                    fontSize: "12px",
+                    color: idStatusColor[idStatus] || "#666",
+                    marginBottom: "10px",
+                    padding: "4px 8px",
+                    borderRadius: "8px",
+                    background: idStatus === "found" ? "#f0fdf4" : idStatus === "not_found" || idStatus === "already" ? "#fff0f0" : "#f3f4f6",
+                  }}>
+                    {idStatusIcon[idStatus]} {idStatusText[idStatus]}
+                  </div>
+                )}
+
+                {idStatus === "found" && registryData && (
+                  <div style={{
+                    background: "#f0fdf4",
+                    border: "1.5px solid #bbf7d0",
+                    borderRadius: "12px",
+                    padding: "12px 14px",
+                    marginBottom: "12px",
+                  }}>
+                    <div style={{ fontSize: "13px", color: "#15803d", fontWeight: 700, marginBottom: "4px" }}>
+                      {t("reg_fullname_auto")}
+                    </div>
+                    <div style={{ fontSize: "15px", fontWeight: 600, color: "#111" }}>{fullName}</div>
+                    {groupName && (
+                      <div style={{ fontSize: "12px", color: "#6b7280", marginTop: "2px" }}>
+                        {t("reg_group_auto")}: <b>{groupName}</b>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </>
+            )}
+
             <input
               style={inputStyle}
               name="login"
@@ -165,14 +279,6 @@ function Register() {
               onChange={handleChange}
               placeholder={t("field_password")}
               maxLength={100}
-            />
-            <input
-              style={inputStyle}
-              name="group"
-              value={form.group}
-              onChange={handleChange}
-              placeholder={t("field_group")}
-              maxLength={30}
             />
 
             <div style={{ position: "relative", marginBottom: "10px" }}>
@@ -206,8 +312,10 @@ function Register() {
             </label>
 
             {error && (
-              <div style={{ background: "#fff0f0", border: "1px solid #fcc", borderRadius: "10px",
-                padding: "10px 12px", fontSize: "13px", color: "#c00", marginBottom: "10px" }}>
+              <div style={{
+                background: "#fff0f0", border: "1px solid #fcc", borderRadius: "10px",
+                padding: "10px 12px", fontSize: "13px", color: "#c00", marginBottom: "10px",
+              }}>
                 {error}
               </div>
             )}
@@ -218,8 +326,10 @@ function Register() {
             </button>
 
             <button type="button" onClick={() => navigate("/")}
-              style={{ background: "transparent", border: "none", color: "#888",
-                fontSize: "13px", cursor: "pointer", marginTop: "8px", width: "100%" }}>
+              style={{
+                background: "transparent", border: "none", color: "#888",
+                fontSize: "13px", cursor: "pointer", marginTop: "8px", width: "100%",
+              }}>
               {t("reg_back_login")}
             </button>
           </form>
@@ -236,9 +346,7 @@ function Register() {
               borderRadius: "14px", padding: "16px", marginBottom: "16px", textAlign: "center",
             }}>
               <div style={{ fontSize: "28px", marginBottom: "6px" }}>📱</div>
-              <p style={{ fontSize: "13px", color: "#444", margin: 0 }}>
-                {t("reg_sms_sent")}
-              </p>
+              <p style={{ fontSize: "13px", color: "#444", margin: 0 }}>{t("reg_sms_sent")}</p>
               <p style={{ fontSize: "15px", fontWeight: 700, color: "#0056b3", margin: "4px 0 0" }}>
                 {form.phone}
               </p>
@@ -259,23 +367,18 @@ function Register() {
                 placeholder="• • • •"
                 maxLength={4}
                 style={{
-                  width: "140px",
-                  padding: "14px 10px",
-                  borderRadius: "14px",
-                  border: "2px solid #0056b3",
-                  fontSize: "28px",
-                  letterSpacing: "12px",
-                  textAlign: "center",
-                  background: "#f9f9f9",
-                  outline: "none",
-                  fontWeight: 700,
+                  width: "140px", padding: "14px 10px", borderRadius: "14px",
+                  border: "2px solid #0056b3", fontSize: "28px", letterSpacing: "12px",
+                  textAlign: "center", background: "#f9f9f9", outline: "none", fontWeight: 700,
                 }}
               />
             </div>
 
             {error && (
-              <div style={{ background: "#fff0f0", border: "1px solid #fcc", borderRadius: "10px",
-                padding: "10px 12px", fontSize: "13px", color: "#c00", marginBottom: "10px" }}>
+              <div style={{
+                background: "#fff0f0", border: "1px solid #fcc", borderRadius: "10px",
+                padding: "10px 12px", fontSize: "13px", color: "#c00", marginBottom: "10px",
+              }}>
                 {error}
               </div>
             )}
@@ -286,8 +389,10 @@ function Register() {
             </button>
 
             <button type="button" onClick={() => { setStep(1); setCode(""); setError(""); }}
-              style={{ background: "transparent", border: "none", color: "#888",
-                fontSize: "13px", cursor: "pointer", marginTop: "8px", width: "100%" }}>
+              style={{
+                background: "transparent", border: "none", color: "#888",
+                fontSize: "13px", cursor: "pointer", marginTop: "8px", width: "100%",
+              }}>
               {t("reg_back_data")}
             </button>
           </form>

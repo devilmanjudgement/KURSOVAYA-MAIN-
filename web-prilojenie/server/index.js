@@ -112,6 +112,35 @@ const upload = multer({
   },
 });
 
+const csvUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024 },
+});
+
+function parseRegistryCSV(text) {
+  const clean = text.replace(/^\uFEFF/, "");
+  const lines = clean.split(/\r?\n/).filter((l) => l.trim());
+  if (!lines.length) return [];
+  const sep = lines[0].includes(";") ? ";" : ",";
+  const strip = (s) => s.trim().replace(/^["']|["']$/g, "");
+  const first = strip(lines[0].split(sep)[0]);
+  const startRow = /^\d/.test(first) ? 0 : 1;
+  const results = [];
+  for (let i = startRow; i < lines.length; i++) {
+    const cols = lines[i].split(sep).map(strip);
+    if (cols[0]) {
+      results.push({
+        student_id: cols[0],
+        first_name: cols[1] || "",
+        last_name: cols[2] || "",
+        middle_name: cols[3] || "",
+        group_name: cols[4] || "",
+      });
+    }
+  }
+  return results;
+}
+
 /* =========================================================
    Таблицы
 ========================================================= */
@@ -192,6 +221,18 @@ CREATE TABLE IF NOT EXISTS attendance (
 `).run();
 
 db.prepare(`
+CREATE TABLE IF NOT EXISTS student_registry (
+  student_id TEXT PRIMARY KEY,
+  first_name TEXT NOT NULL,
+  last_name TEXT NOT NULL,
+  middle_name TEXT DEFAULT '',
+  group_name TEXT DEFAULT ''
+)
+`).run();
+
+try { db.prepare("ALTER TABLE users ADD COLUMN student_id TEXT").run(); } catch (_) {}
+
+db.prepare(`
 CREATE TABLE IF NOT EXISTS section_posts (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   section_id TEXT,
@@ -222,20 +263,35 @@ app.post("/api/login", rateLimit(60_000, 10), (req, res) => {
 });
 
 app.post("/api/register", rateLimit(60_000, 5), (req, res) => {
-  const name = sanitize(req.body.name || "");
+  const student_id = sanitize(req.body.student_id || "");
+  let name = sanitize(req.body.name || "");
   const login = sanitize(req.body.login || "");
   const password = sanitize(req.body.password || "");
-  const group_name = sanitize(req.body.group_name || "");
+  let group_name = sanitize(req.body.group_name || "");
   const role = req.body.role;
 
-  if (!name || !login || !password) return res.json({ success: false, message: "Не все поля заполнены" });
   if (role === "coach" || role === "admin") return res.json({ success: false, message: "Регистрация недоступна для этой роли" });
+  if (!login || !password) return res.json({ success: false, message: "Не все поля заполнены" });
   if (login.length < 3) return res.json({ success: false, message: "Логин — минимум 3 символа" });
   if (password.length < 6) return res.json({ success: false, message: "Пароль — минимум 6 символов" });
 
+  const registryCount = db.prepare("SELECT COUNT(*) as c FROM student_registry").get().c;
+
+  if (registryCount > 0) {
+    if (!student_id) return res.json({ success: false, message: "Укажите номер студенческого билета" });
+    const entry = db.prepare("SELECT * FROM student_registry WHERE student_id=?").get(student_id);
+    if (!entry) return res.json({ success: false, message: "Студент не найден в реестре. Обратитесь в деканат" });
+    const dup = db.prepare("SELECT id FROM users WHERE student_id=?").get(student_id);
+    if (dup) return res.json({ success: false, message: "Этот студенческий билет уже зарегистрирован" });
+    name = [entry.last_name, entry.first_name, entry.middle_name].filter(Boolean).join(" ");
+    group_name = entry.group_name || group_name;
+  } else {
+    if (!name) return res.json({ success: false, message: "Не все поля заполнены" });
+  }
+
   try {
-    db.prepare("INSERT INTO users(name,login,password,role,group_name) VALUES (?,?,?,?,?)")
-      .run(name, login, password, "student", group_name || null);
+    db.prepare("INSERT INTO users(name,login,password,role,group_name,student_id) VALUES (?,?,?,?,?,?)")
+      .run(name, login, password, "student", group_name || null, student_id || null);
     secLog("INFO", req.ip, `New student registered: ${login}`);
     res.json({ success: true });
   } catch {
@@ -764,6 +820,48 @@ function seedUsers() {
 seedUsers();
 
 /* =========================================================
-   Запуск
+   Реестр студентов
 ========================================================= */
+app.get("/api/registry/check/:studentId", (req, res) => {
+  const row = db.prepare("SELECT * FROM student_registry WHERE student_id=?").get(req.params.studentId);
+  if (!row) return res.json({ found: false });
+  const dup = db.prepare("SELECT id FROM users WHERE student_id=?").get(req.params.studentId);
+  res.json({ found: true, data: row, alreadyRegistered: !!dup });
+});
+
+app.get("/api/admin/registry", (req, res) => {
+  const adminId = Number(req.headers["x-admin-id"]);
+  const admin = db.prepare("SELECT role FROM users WHERE id=?").get(adminId);
+  if (!admin || admin.role !== "admin") return res.status(403).json({ success: false });
+  const rows = db.prepare(
+    "SELECT sr.*, u.login FROM student_registry sr LEFT JOIN users u ON u.student_id=sr.student_id ORDER BY sr.last_name, sr.first_name"
+  ).all();
+  res.json(rows);
+});
+
+app.post("/api/admin/registry/upload", csvUpload.single("file"), (req, res) => {
+  const adminId = Number(req.headers["x-admin-id"]);
+  const admin = db.prepare("SELECT role FROM users WHERE id=?").get(adminId);
+  if (!admin || admin.role !== "admin") return res.status(403).json({ success: false });
+  if (!req.file) return res.json({ success: false, message: "Файл не загружен" });
+  const text = req.file.buffer.toString("utf-8");
+  const rows = parseRegistryCSV(text);
+  if (!rows.length) return res.json({ success: false, message: "Нет данных в файле" });
+  const ins = db.prepare(
+    "INSERT OR REPLACE INTO student_registry(student_id,first_name,last_name,middle_name,group_name) VALUES(?,?,?,?,?)"
+  );
+  db.transaction((list) => {
+    for (const r of list) ins.run(r.student_id, r.first_name, r.last_name, r.middle_name, r.group_name);
+  })(rows);
+  res.json({ success: true, imported: rows.length });
+});
+
+app.delete("/api/admin/registry/:studentId", (req, res) => {
+  const adminId = Number(req.headers["x-admin-id"]);
+  const admin = db.prepare("SELECT role FROM users WHERE id=?").get(adminId);
+  if (!admin || admin.role !== "admin") return res.status(403).json({ success: false });
+  db.prepare("DELETE FROM student_registry WHERE student_id=?").run(req.params.studentId);
+  res.json({ success: true });
+});
+
 app.listen(PORT, () => console.log(`🚀 Сервер: ${BASE_URL}`));
