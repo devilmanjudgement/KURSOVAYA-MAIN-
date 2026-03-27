@@ -8,13 +8,11 @@ import "./App.css";
 
 const DAY_ORDER_RU = ["Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота", "Воскресенье"];
 const DAY_SHORT_RU = { Понедельник: "ПН", Вторник: "ВТ", Среда: "СР", Четверг: "ЧТ", Пятница: "ПТ", Суббота: "СБ", Воскресенье: "ВС" };
-const DAY_SHORT_EN = { Понедельник: "MO", Вторник: "TU", Среда: "WE", Четверг: "TH", Пятница: "FR", Суббота: "SA", Воскресенье: "SU" };
-const DAY_EN = { Понедельник: "Monday", Вторник: "Tuesday", Среда: "Wednesday", Четверг: "Thursday", Пятница: "Friday", Суббота: "Saturday", Воскресенье: "Sunday" };
 
 function Schedule() {
   const [schedule, setSchedule] = useState([]);
   const navigate = useNavigate();
-  const { t, lang } = useLang();
+  const { t } = useLang();
   const { isDark } = useTheme();
   const user = JSON.parse(localStorage.getItem("user") || "{}");
 
@@ -31,8 +29,8 @@ function Schedule() {
     return acc;
   }, {});
 
-  const dayLabel = (day) => lang === "en" ? (DAY_EN[day] || day) : day;
-  const dayShort = (day) => lang === "en" ? (DAY_SHORT_EN[day] || day.slice(0, 2).toUpperCase()) : (DAY_SHORT_RU[day] || day.slice(0, 2).toUpperCase());
+  const dayLabel = (day) => day;
+  const dayShort = (day) => DAY_SHORT_RU[day] || day.slice(0, 2).toUpperCase();
 
   return (
     <div className="mobile-wrapper">

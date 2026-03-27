@@ -12,7 +12,7 @@ export default function Navbar() {
   const navigate = useNavigate();
   const location = useLocation();
   const { theme, toggle: toggleTheme, isDark } = useTheme();
-  const { lang, toggleLang, t } = useLang();
+  const { t } = useLang();
   const [unread, setUnread] = useState(0);
   const [toasts, setToasts] = useState([]);
   const sseRef = useRef(null);
@@ -93,9 +93,6 @@ export default function Navbar() {
       }}>
         <button onClick={toggleTheme} title={isDark ? 'Светлая тема' : 'Тёмная тема'} style={btnStyle}>
           {isDark ? '☀️' : '🌙'}
-        </button>
-        <button onClick={toggleLang} title={lang === 'ru' ? 'Switch to English' : 'Переключить на русский'} style={btnStyle}>
-          {lang === 'ru' ? 'EN' : 'RU'}
         </button>
       </div>
 
