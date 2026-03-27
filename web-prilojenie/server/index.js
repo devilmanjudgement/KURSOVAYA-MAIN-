@@ -366,8 +366,17 @@ app.put("/api/profile/:id/password", (req, res) => {
   res.json({ success: true });
 });
 
-app.post("/api/student/:id/healthdoc", upload.single("file"), (req, res) => {
-  if (!req.file) return res.json({ success: false, message: "Файл не загружен" });
+const healthDocUpload = multer({
+  storage,
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: (_, file, cb) => {
+    const ok = file.mimetype === "image/png" || file.mimetype === "application/pdf";
+    cb(null, ok);
+  },
+});
+
+app.post("/api/student/:id/healthdoc", healthDocUpload.single("file"), (req, res) => {
+  if (!req.file) return res.json({ success: false, message: "Принимаются только PNG и PDF" });
   const url = `/images/${req.file.filename}`;
   db.prepare("UPDATE users SET health_doc=? WHERE id=?").run(url, req.params.id);
   res.json({ success: true, health_doc: url });
