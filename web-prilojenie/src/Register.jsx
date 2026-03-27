@@ -226,10 +226,6 @@ function Register() {
               </span>
             </label>
 
-            <div style={{ fontSize: "12px", color: "#9ca3af", marginBottom: "10px", textAlign: "center" }}>
-              {t("reg_ip_notice")}
-            </div>
-
             {error && (
               <div style={{
                 background: "#fff0f0", border: "1px solid #fcc", borderRadius: "10px",
