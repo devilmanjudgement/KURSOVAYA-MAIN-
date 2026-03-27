@@ -126,7 +126,7 @@ const T = {
     chat_you: "Вы",
     section_title: "Секция",
     section_tab_info: "О секции",
-    section_tab_insider: "Для своих",
+    section_tab_insider: "Мои секции",
     section_coach: "Тренер:",
     section_description: "Описание:",
     section_no_desc: "Описание отсутствует",

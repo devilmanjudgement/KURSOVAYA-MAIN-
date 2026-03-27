@@ -169,7 +169,7 @@ function Home() {
                   transition: "all 0.2s",
                 }}
               >
-                {tabKey === "all" ? "Все секции" : "Для своих"}
+                {tabKey === "all" ? "Все секции" : "Мои секции"}
                 {tabKey === "insider" && mySections.length > 0 && homeTab !== "insider" && (
                   <span style={{
                     display: "inline-block", background: "#ff5722", color: "#fff",
