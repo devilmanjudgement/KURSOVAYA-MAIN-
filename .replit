@@ -26,7 +26,7 @@ outputType = "webview"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "node web-prilojenie/server/index.js & cd web-prilojenie && npm run dev"
+args = "bash start.sh"
 waitForPort = 5000
 
 [[ports]]
@@ -35,11 +35,7 @@ externalPort = 80
 
 [[ports]]
 localPort = 5000
-externalPort = 5000
-
-[[ports]]
-localPort = 5001
-externalPort = 3001
+externalPort = 80
 
 [deployment]
 deploymentTarget = "vm"
