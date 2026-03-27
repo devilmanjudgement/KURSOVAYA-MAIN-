@@ -233,6 +233,22 @@ CREATE TABLE IF NOT EXISTS student_registry (
 try { db.prepare("ALTER TABLE users ADD COLUMN student_id TEXT").run(); } catch (_) {}
 
 db.prepare(`
+CREATE TABLE IF NOT EXISTS pending_registrations (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  login TEXT,
+  password TEXT,
+  last_name TEXT NOT NULL,
+  first_name TEXT NOT NULL,
+  middle_name TEXT DEFAULT '',
+  email TEXT,
+  ip TEXT,
+  status TEXT DEFAULT 'pending',
+  rejection_reason TEXT,
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP
+)
+`).run();
+
+db.prepare(`
 CREATE TABLE IF NOT EXISTS section_posts (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   section_id TEXT,
@@ -246,6 +262,28 @@ CREATE TABLE IF NOT EXISTS section_posts (
 /* =========================================================
    Авторизация / Регистрация
 ========================================================= */
+
+const regIpMap = new Map();
+setInterval(() => {
+  const now = Date.now();
+  for (const [k, v] of regIpMap.entries()) {
+    if (now - v.start > 24 * 60 * 60 * 1000) regIpMap.delete(k);
+  }
+}, 60 * 60 * 1000);
+
+function checkRegIpLimit(ip) {
+  const now = Date.now();
+  const entry = regIpMap.get(ip) || { count: 0, start: now };
+  if (now - entry.start > 24 * 60 * 60 * 1000) {
+    entry.count = 1;
+    entry.start = now;
+  } else {
+    entry.count++;
+  }
+  regIpMap.set(ip, entry);
+  return entry.count <= 3;
+}
+
 app.post("/api/login", rateLimit(60_000, 10), (req, res) => {
   const login = sanitize(req.body.login || "");
   const password = sanitize(req.body.password || "");
@@ -262,41 +300,39 @@ app.post("/api/login", rateLimit(60_000, 10), (req, res) => {
   res.json({ success: true, user: safeUser });
 });
 
-app.post("/api/register", rateLimit(60_000, 5), (req, res) => {
-  const student_id = sanitize(req.body.student_id || "");
-  let name = sanitize(req.body.name || "");
+app.post("/api/register", rateLimit(60_000, 10), (req, res) => {
+  const ip = req.ip || "unknown";
+
+  if (!checkRegIpLimit(ip)) {
+    secLog("WARN", ip, "Registration IP limit exceeded (3 per 24h)");
+    return res.status(429).json({ success: false, message: "Вы уже отправили 3 заявки на регистрацию за 24 часа. Попробуйте завтра." });
+  }
+
   const login = sanitize(req.body.login || "");
   const password = sanitize(req.body.password || "");
-  let group_name = sanitize(req.body.group_name || "");
-  const role = req.body.role;
+  const last_name = sanitize(req.body.last_name || "");
+  const first_name = sanitize(req.body.first_name || "");
+  const middle_name = sanitize(req.body.middle_name || "");
+  const email = sanitize(req.body.email || "").toLowerCase().trim();
 
-  if (role === "coach" || role === "admin") return res.json({ success: false, message: "Регистрация недоступна для этой роли" });
-  if (!login || !password) return res.json({ success: false, message: "Не все поля заполнены" });
+  if (!login || !password || !last_name || !first_name) {
+    return res.json({ success: false, message: "Заполните все обязательные поля (Фамилия, Имя, логин, пароль)" });
+  }
   if (login.length < 3) return res.json({ success: false, message: "Логин — минимум 3 символа" });
   if (password.length < 6) return res.json({ success: false, message: "Пароль — минимум 6 символов" });
 
-  const registryCount = db.prepare("SELECT COUNT(*) as c FROM student_registry").get().c;
+  const dupUser = db.prepare("SELECT id FROM users WHERE login=?").get(login);
+  if (dupUser) return res.json({ success: false, message: "Такой логин уже занят" });
 
-  if (registryCount > 0) {
-    if (!student_id) return res.json({ success: false, message: "Укажите номер студенческого билета" });
-    const entry = db.prepare("SELECT * FROM student_registry WHERE student_id=?").get(student_id);
-    if (!entry) return res.json({ success: false, message: "Студент не найден в реестре. Обратитесь в деканат" });
-    const dup = db.prepare("SELECT id FROM users WHERE student_id=?").get(student_id);
-    if (dup) return res.json({ success: false, message: "Этот студенческий билет уже зарегистрирован" });
-    name = [entry.last_name, entry.first_name, entry.middle_name].filter(Boolean).join(" ");
-    group_name = entry.group_name || group_name;
-  } else {
-    if (!name) return res.json({ success: false, message: "Не все поля заполнены" });
-  }
+  const dupPending = db.prepare("SELECT id FROM pending_registrations WHERE login=? AND status='pending'").get(login);
+  if (dupPending) return res.json({ success: false, message: "Заявка с таким логином уже ожидает рассмотрения" });
 
-  try {
-    db.prepare("INSERT INTO users(name,login,password,role,group_name,student_id) VALUES (?,?,?,?,?,?)")
-      .run(name, login, password, "student", group_name || null, student_id || null);
-    secLog("INFO", req.ip, `New student registered: ${login}`);
-    res.json({ success: true });
-  } catch {
-    res.json({ success: false, message: "Такой логин уже существует" });
-  }
+  db.prepare(
+    "INSERT INTO pending_registrations(login,password,last_name,first_name,middle_name,email,ip) VALUES(?,?,?,?,?,?,?)"
+  ).run(login, password, last_name, first_name, middle_name, email, ip);
+
+  secLog("INFO", ip, `New pending registration: ${login} (${last_name} ${first_name})`);
+  res.json({ success: true, pending: true });
 });
 
 /* =========================================================
@@ -799,6 +835,52 @@ app.delete("/api/admin/bookings/:id", requireAdmin, (req, res) => {
 
 app.get("/api/admin/logs", requireAdmin, (req, res) => {
   res.json(securityLogs);
+});
+
+/* =========================================================
+   Заявки на регистрацию (admin)
+========================================================= */
+app.get("/api/admin/pending-registrations", requireAdmin, (req, res) => {
+  const rows = db.prepare(
+    "SELECT id, login, last_name, first_name, middle_name, email, ip, status, rejection_reason, created_at FROM pending_registrations ORDER BY created_at DESC"
+  ).all();
+  res.json(rows);
+});
+
+app.post("/api/admin/pending-registrations/:id/approve", requireAdmin, (req, res) => {
+  const pr = db.prepare("SELECT * FROM pending_registrations WHERE id=?").get(req.params.id);
+  if (!pr) return res.json({ success: false, message: "Заявка не найдена" });
+  if (pr.status !== "pending") return res.json({ success: false, message: "Заявка уже обработана" });
+
+  const dupUser = db.prepare("SELECT id FROM users WHERE login=?").get(pr.login);
+  if (dupUser) {
+    db.prepare("UPDATE pending_registrations SET status='rejected', rejection_reason=? WHERE id=?")
+      .run("Логин уже занят другим пользователем", pr.id);
+    return res.json({ success: false, message: "Логин уже занят другим пользователем" });
+  }
+
+  const name = [pr.last_name, pr.first_name, pr.middle_name].filter(Boolean).join(" ");
+  try {
+    db.transaction(() => {
+      db.prepare("INSERT INTO users(name,login,password,role) VALUES (?,?,?,?)").run(name, pr.login, pr.password, "student");
+      db.prepare("UPDATE pending_registrations SET status='approved' WHERE id=?").run(pr.id);
+    })();
+    secLog("INFO", req.ip, `Admin approved registration: ${pr.login}`);
+    res.json({ success: true });
+  } catch (e) {
+    res.json({ success: false, message: "Ошибка при создании аккаунта: " + e.message });
+  }
+});
+
+app.post("/api/admin/pending-registrations/:id/reject", requireAdmin, (req, res) => {
+  const reason = sanitize(req.body.reason || "Заявка отклонена администратором");
+  const pr = db.prepare("SELECT id, login, status FROM pending_registrations WHERE id=?").get(req.params.id);
+  if (!pr) return res.json({ success: false, message: "Заявка не найдена" });
+  if (pr.status !== "pending") return res.json({ success: false, message: "Заявка уже обработана" });
+
+  db.prepare("UPDATE pending_registrations SET status='rejected', rejection_reason=? WHERE id=?").run(reason, pr.id);
+  secLog("INFO", req.ip, `Admin rejected registration: ${pr.login}, reason: ${reason}`);
+  res.json({ success: true });
 });
 
 /* =========================================================

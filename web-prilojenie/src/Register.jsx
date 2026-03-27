@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useLang } from "./contexts/LangContext";
 import "./App.css";
@@ -10,12 +10,7 @@ function Register() {
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [agreed, setAgreed] = useState(false);
-
-  const [studentId, setStudentId] = useState("");
-  const [idStatus, setIdStatus] = useState("idle");
-  const [registryData, setRegistryData] = useState(null);
-  const [registryRequired, setRegistryRequired] = useState(null);
-  const [fioError, setFioError] = useState("");
+  const [submitted, setSubmitted] = useState(false);
 
   const [fio, setFio] = useState({ last_name: "", first_name: "", middle_name: "" });
   const [form, setForm] = useState({ login: "", password: "", email: "" });
@@ -23,61 +18,7 @@ function Register() {
   const [sentCode, setSentCode] = useState("");
   const [error, setError] = useState("");
 
-  const debounceTimer = useRef(null);
-
-  useEffect(() => { checkRegistryEnabled(); }, []);
-
-  const checkRegistryEnabled = async () => {
-    try {
-      const r = await fetch("/api/registry/check/000");
-      const d = await r.json();
-      setRegistryRequired(d.found !== undefined);
-    } catch { setRegistryRequired(false); }
-  };
-
-  const lookupStudentId = (id) => {
-    if (!id.trim()) { setIdStatus("idle"); setRegistryData(null); return; }
-    setIdStatus("checking");
-    fetch(`/api/registry/check/${encodeURIComponent(id.trim())}`)
-      .then((r) => r.json())
-      .then((d) => {
-        if (!d.found) { setIdStatus("not_found"); setRegistryData(null); return; }
-        if (d.alreadyRegistered) { setIdStatus("already"); setRegistryData(null); return; }
-        setIdStatus("found");
-        setRegistryData(d.data);
-        setFio({ last_name: "", first_name: "", middle_name: "" });
-        setFioError("");
-      })
-      .catch(() => { setIdStatus("not_found"); setRegistryData(null); });
-  };
-
-  const handleStudentIdChange = (e) => {
-    const val = e.target.value;
-    setStudentId(val);
-    setIdStatus("idle");
-    setRegistryData(null);
-    setFioError("");
-    clearTimeout(debounceTimer.current);
-    if (val.trim().length >= 3) {
-      debounceTimer.current = setTimeout(() => lookupStudentId(val), 500);
-    }
-  };
-
-  const norm = (s) => (s || "").trim().toLowerCase();
-
-  const checkFioMatch = () => {
-    if (!registryData) return true;
-    const lastOk = norm(fio.last_name) === norm(registryData.last_name);
-    const firstOk = norm(fio.first_name) === norm(registryData.first_name);
-    const middleOk = norm(fio.middle_name) === norm(registryData.middle_name);
-    return lastOk && firstOk && middleOk;
-  };
-
-  const handleFioChange = (e) => {
-    setFio((prev) => ({ ...prev, [e.target.name]: e.target.value }));
-    setFioError("");
-  };
-
+  const handleFioChange = (e) => setFio((prev) => ({ ...prev, [e.target.name]: e.target.value }));
   const handleChange = (e) => setForm((f) => ({ ...f, [e.target.name]: e.target.value }));
 
   const validateEmail = (e) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e.trim());
@@ -85,20 +26,9 @@ function Register() {
   const sendCode = async (e) => {
     e.preventDefault();
     setError("");
-    setFioError("");
 
-    if (registryRequired !== false) {
-      if (!studentId.trim()) return setError(t("reg_student_id") + ": обязательно");
-      if (idStatus !== "found") return setError(t("reg_id_not_found"));
-
-      if (!fio.last_name.trim() || !fio.first_name.trim()) {
-        return setFioError(t("reg_fio_mismatch").replace("не совпадает с данными реестра. Проверьте написание", "— заполните все поля"));
-      }
-      if (!checkFioMatch()) {
-        return setFioError(t("reg_fio_mismatch"));
-      }
-    }
-
+    if (!fio.last_name.trim()) return setError(t("reg_last_name") + " — обязательное поле");
+    if (!fio.first_name.trim()) return setError(t("reg_first_name") + " — обязательное поле");
     if (!form.login.trim()) return setError(t("err_no_login"));
     if (form.login.trim().length < 3) return setError(t("err_login_short"));
     if (!form.password.trim()) return setError(t("err_no_pass"));
@@ -115,10 +45,17 @@ function Register() {
         body: JSON.stringify({ email: form.email.trim() }),
       });
       const data = await res.json();
-      if (data.success) { setSentCode(data._devCode || ""); setStep(2); }
-      else setError(data.message || t("err_send_code"));
-    } catch { setError(t("err_server")); }
-    finally { setLoading(false); }
+      if (data.success) {
+        setSentCode(data._devCode || "");
+        setStep(2);
+      } else {
+        setError(data.message || t("err_send_code"));
+      }
+    } catch {
+      setError(t("err_server"));
+    } finally {
+      setLoading(false);
+    }
   };
 
   const verifyAndRegister = async (e) => {
@@ -134,32 +71,34 @@ function Register() {
         body: JSON.stringify({ email: form.email.trim(), code }),
       });
       const verifyData = await verifyRes.json();
-      if (!verifyData.success) { setLoading(false); return setError(t("err_code_wrong")); }
-
-      const body = {
-        login: form.login.trim(),
-        password: form.password.trim(),
-        role: "student",
-      };
-      if (registryRequired !== false && idStatus === "found") {
-        body.student_id = studentId.trim();
-        body.entered_last = fio.last_name.trim();
-        body.entered_first = fio.first_name.trim();
-        body.entered_middle = fio.middle_name.trim();
-      } else {
-        body.name = `${fio.last_name} ${fio.first_name} ${fio.middle_name}`.trim() || form.login.trim();
+      if (!verifyData.success) {
+        setLoading(false);
+        return setError(t("err_code_wrong"));
       }
 
       const regRes = await fetch("/api/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
+        body: JSON.stringify({
+          login: form.login.trim(),
+          password: form.password.trim(),
+          last_name: fio.last_name.trim(),
+          first_name: fio.first_name.trim(),
+          middle_name: fio.middle_name.trim(),
+          email: form.email.trim(),
+        }),
       });
       const regData = await regRes.json();
-      if (regData.success) { alert(t("reg_success")); navigate("/"); }
-      else setError(regData.message || t("err_reg"));
-    } catch { setError(t("err_server")); }
-    finally { setLoading(false); }
+      if (regData.success) {
+        setSubmitted(true);
+      } else {
+        setError(regData.message || t("err_reg"));
+      }
+    } catch {
+      setError(t("err_server"));
+    } finally {
+      setLoading(false);
+    }
   };
 
   const inputStyle = {
@@ -168,12 +107,43 @@ function Register() {
     marginBottom: "10px", boxSizing: "border-box", outline: "none",
   };
 
-  const idStatusColor = { found: "#15803d", not_found: "#dc2626", already: "#d97706", checking: "#6b7280" };
-  const idStatusIcon = { found: "✅", not_found: "❌", already: "⚠️", checking: "⏳" };
-  const idStatusText = {
-    found: t("reg_id_found"), not_found: t("reg_id_not_found"),
-    already: t("reg_id_already"), checking: t("reg_checking_id"),
-  };
+  if (submitted) {
+    return (
+      <div className="mobile-wrapper">
+        <div className="mobile-screen" style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "30px 24px", textAlign: "center" }}>
+          <div style={{ fontSize: "56px", marginBottom: "16px" }}>✅</div>
+          <h2 style={{ fontSize: "20px", fontWeight: 800, color: "#111827", marginBottom: "8px" }}>
+            {t("reg_pending_title")}
+          </h2>
+          <p style={{ fontSize: "14px", color: "#6b7280", lineHeight: "1.6", marginBottom: "24px" }}>
+            {t("reg_pending_desc")}
+          </p>
+          <div style={{
+            background: "#f0f6ff", border: "1.5px solid #c7d9f5",
+            borderRadius: "14px", padding: "16px 20px", marginBottom: "24px", width: "100%",
+          }}>
+            <div style={{ fontSize: "13px", color: "#374151", marginBottom: "4px" }}>
+              <b>{t("reg_last_name")}:</b> {fio.last_name}
+            </div>
+            <div style={{ fontSize: "13px", color: "#374151", marginBottom: "4px" }}>
+              <b>{t("reg_first_name")}:</b> {fio.first_name}
+            </div>
+            {fio.middle_name && (
+              <div style={{ fontSize: "13px", color: "#374151", marginBottom: "4px" }}>
+                <b>{t("reg_middle_name")}:</b> {fio.middle_name}
+              </div>
+            )}
+            <div style={{ fontSize: "13px", color: "#374151" }}>
+              <b>{t("field_login")}:</b> {form.login}
+            </div>
+          </div>
+          <button onClick={() => navigate("/")} className="login-btn">
+            {t("reg_back_login")}
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="mobile-wrapper">
@@ -197,113 +167,48 @@ function Register() {
               {t("reg_step1")}
             </p>
 
-            {registryRequired !== false && (
-              <>
-                <p style={{ fontSize: "12px", color: "#555", marginBottom: "8px" }}>
-                  {t("reg_id_hint")}
-                </p>
-
-                <input
-                  style={{
-                    ...inputStyle, marginBottom: "4px",
-                    borderColor: idStatus === "found" ? "#16a34a"
-                      : (idStatus === "not_found" || idStatus === "already") ? "#dc2626"
-                      : "#e5e5e5",
-                  }}
-                  value={studentId}
-                  onChange={handleStudentIdChange}
-                  placeholder={t("reg_student_id")}
-                  maxLength={30}
-                />
-
-                {idStatus !== "idle" && (
-                  <div style={{
-                    fontSize: "12px", color: idStatusColor[idStatus] || "#666",
-                    marginBottom: "10px", padding: "4px 8px", borderRadius: "8px",
-                    background: idStatus === "found" ? "#f0fdf4"
-                      : (idStatus === "not_found" || idStatus === "already") ? "#fff0f0"
-                      : "#f3f4f6",
-                  }}>
-                    {idStatusIcon[idStatus]} {idStatusText[idStatus]}
-                  </div>
-                )}
-
-                {idStatus === "found" && registryData && (
-                  <div style={{
-                    background: "#f0f6ff", border: "1.5px solid #c7d9f5",
-                    borderRadius: "12px", padding: "12px 14px", marginBottom: "12px",
-                  }}>
-                    <p style={{ fontSize: "12px", fontWeight: 700, color: "#0056b3", margin: "0 0 10px" }}>
-                      🔐 {t("reg_fullname_auto")}
-                    </p>
-                    <p style={{ fontSize: "11px", color: "#666", margin: "0 0 10px" }}>
-                      {t("reg_fio_section")}
-                    </p>
-
-                    <input
-                      style={{
-                        ...inputStyle,
-                        borderColor: fioError && !fio.last_name.trim() ? "#dc2626" : norm(fio.last_name) && norm(fio.last_name) === norm(registryData.last_name) ? "#16a34a" : "#e5e5e5",
-                      }}
-                      name="last_name"
-                      value={fio.last_name}
-                      onChange={handleFioChange}
-                      placeholder={t("reg_last_name")}
-                      maxLength={60}
-                      autoComplete="family-name"
-                    />
-                    <input
-                      style={{
-                        ...inputStyle,
-                        borderColor: fioError && !fio.first_name.trim() ? "#dc2626" : norm(fio.first_name) && norm(fio.first_name) === norm(registryData.first_name) ? "#16a34a" : "#e5e5e5",
-                      }}
-                      name="first_name"
-                      value={fio.first_name}
-                      onChange={handleFioChange}
-                      placeholder={t("reg_first_name")}
-                      maxLength={60}
-                      autoComplete="given-name"
-                    />
-                    <input
-                      style={{
-                        ...inputStyle,
-                        marginBottom: 0,
-                        borderColor: norm(fio.middle_name) && norm(fio.middle_name) === norm(registryData.middle_name) ? "#16a34a" : "#e5e5e5",
-                      }}
-                      name="middle_name"
-                      value={fio.middle_name}
-                      onChange={handleFioChange}
-                      placeholder={t("reg_middle_name")}
-                      maxLength={60}
-                      autoComplete="additional-name"
-                    />
-
-                    {fioError && (
-                      <div style={{
-                        marginTop: "8px", fontSize: "12px", color: "#dc2626",
-                        background: "#fff0f0", border: "1px solid #fca5a5",
-                        borderRadius: "8px", padding: "6px 10px",
-                      }}>
-                        ❌ {fioError}
-                      </div>
-                    )}
-
-                    {registryData.group_name && (
-                      <div style={{ marginTop: "10px", fontSize: "12px", color: "#6b7280" }}>
-                        {t("reg_group_auto")}: <b style={{ color: "#374151" }}>{registryData.group_name}</b>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </>
-            )}
+            <div style={{
+              background: "#f0f6ff", border: "1.5px solid #c7d9f5",
+              borderRadius: "12px", padding: "14px 16px", marginBottom: "14px",
+            }}>
+              <p style={{ fontSize: "12px", fontWeight: 700, color: "#0056b3", margin: "0 0 10px" }}>
+                👤 {t("reg_fio_section")}
+              </p>
+              <input
+                style={{ ...inputStyle, marginBottom: "8px" }}
+                name="last_name"
+                value={fio.last_name}
+                onChange={handleFioChange}
+                placeholder={t("reg_last_name") + " *"}
+                maxLength={60}
+                autoComplete="family-name"
+              />
+              <input
+                style={{ ...inputStyle, marginBottom: "8px" }}
+                name="first_name"
+                value={fio.first_name}
+                onChange={handleFioChange}
+                placeholder={t("reg_first_name") + " *"}
+                maxLength={60}
+                autoComplete="given-name"
+              />
+              <input
+                style={{ ...inputStyle, marginBottom: 0 }}
+                name="middle_name"
+                value={fio.middle_name}
+                onChange={handleFioChange}
+                placeholder={t("reg_middle_name") + " (" + t("reg_optional") + ")"}
+                maxLength={60}
+                autoComplete="additional-name"
+              />
+            </div>
 
             <input style={inputStyle} name="login" value={form.login} onChange={handleChange}
-              placeholder={t("field_login")} maxLength={50} autoComplete="username" />
+              placeholder={t("field_login") + " *"} maxLength={50} autoComplete="username" />
             <input style={inputStyle} type="password" name="password" value={form.password}
-              onChange={handleChange} placeholder={t("field_password")} maxLength={100} autoComplete="new-password" />
+              onChange={handleChange} placeholder={t("field_password") + " *"} maxLength={100} autoComplete="new-password" />
             <input style={inputStyle} type="email" name="email" value={form.email}
-              onChange={handleChange} placeholder={t("field_email")} maxLength={120} autoComplete="email" />
+              onChange={handleChange} placeholder={t("field_email") + " *"} maxLength={120} autoComplete="email" />
 
             <label style={{
               display: "flex", alignItems: "flex-start", gap: "10px",
@@ -320,6 +225,10 @@ function Register() {
                 </a>
               </span>
             </label>
+
+            <div style={{ fontSize: "12px", color: "#9ca3af", marginBottom: "10px", textAlign: "center" }}>
+              {t("reg_ip_notice")}
+            </div>
 
             {error && (
               <div style={{

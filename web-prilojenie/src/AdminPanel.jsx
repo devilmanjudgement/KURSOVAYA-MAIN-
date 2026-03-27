@@ -6,8 +6,6 @@ function AdminPanel() {
   const navigate = useNavigate();
   const { t } = useLang();
 
-  const TABS = [t("adm_tab_stats"), t("adm_tab_users"), t("adm_tab_sections"), t("adm_tab_bookings"), t("adm_tab_logs"), t("adm_registry")];
-
   const [tab, setTab] = useState(0);
   const [stats, setStats] = useState(null);
   const [users, setUsers] = useState([]);
@@ -15,11 +13,26 @@ function AdminPanel() {
   const [bookings, setBookings] = useState([]);
   const [logs, setLogs] = useState([]);
   const [registry, setRegistry] = useState([]);
+  const [pendingRegs, setPendingRegs] = useState([]);
+  const [pendingSearch, setPendingSearch] = useState("");
+  const [rejectModal, setRejectModal] = useState(null);
+  const [rejectReason, setRejectReason] = useState("");
   const [regSearch, setRegSearch] = useState("");
   const [regUploading, setRegUploading] = useState(false);
   const [regUploadMsg, setRegUploadMsg] = useState("");
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(false);
+
+  const pendingCount = pendingRegs.filter((r) => r.status === "pending").length;
+  const TABS = [
+    t("adm_tab_stats"),
+    t("adm_tab_users"),
+    t("adm_tab_sections"),
+    t("adm_tab_bookings"),
+    pendingCount > 0 ? `${t("adm_tab_pending")} (${pendingCount})` : t("adm_tab_pending"),
+    t("adm_tab_logs"),
+    t("adm_registry"),
+  ];
 
   const user = JSON.parse(localStorage.getItem("user") || "{}");
 
@@ -38,13 +51,14 @@ function AdminPanel() {
   const fetchAll = async () => {
     setLoading(true);
     try {
-      const [s, u, sec, b, l, reg] = await Promise.all([
+      const [s, u, sec, b, l, reg, pr] = await Promise.all([
         fetch("/api/admin/stats", { headers: adminHeaders }).then((r) => r.json()),
         fetch("/api/admin/users", { headers: adminHeaders }).then((r) => r.json()),
         fetch("/api/sections").then((r) => r.json()),
         fetch("/api/admin/bookings", { headers: adminHeaders }).then((r) => r.json()),
         fetch("/api/admin/logs", { headers: adminHeaders }).then((r) => r.json()),
         fetch("/api/admin/registry", { headers: adminHeaders }).then((r) => r.json()),
+        fetch("/api/admin/pending-registrations", { headers: adminHeaders }).then((r) => r.json()),
       ]);
       setStats(s);
       setUsers(u);
@@ -52,6 +66,7 @@ function AdminPanel() {
       setBookings(b);
       setLogs(l);
       setRegistry(Array.isArray(reg) ? reg : []);
+      setPendingRegs(Array.isArray(pr) ? pr : []);
     } catch (e) {
       console.error(e);
     } finally {
@@ -59,9 +74,40 @@ function AdminPanel() {
     }
   };
 
+  const fetchPendingRegs = async () => {
+    const pr = await fetch("/api/admin/pending-registrations", { headers: adminHeaders }).then((r) => r.json());
+    setPendingRegs(Array.isArray(pr) ? pr : []);
+  };
+
   const fetchRegistry = async () => {
     const reg = await fetch("/api/admin/registry", { headers: adminHeaders }).then((r) => r.json());
     setRegistry(Array.isArray(reg) ? reg : []);
+  };
+
+  const approvePending = async (id) => {
+    const res = await fetch(`/api/admin/pending-registrations/${id}/approve`, { method: "POST", headers: adminHeaders });
+    const data = await res.json();
+    if (data.success) {
+      fetchPendingRegs();
+    } else {
+      alert(data.message || t("err_server_short"));
+    }
+  };
+
+  const rejectPending = async (id, reason) => {
+    const res = await fetch(`/api/admin/pending-registrations/${id}/reject`, {
+      method: "POST",
+      headers: { ...adminHeaders, "Content-Type": "application/json" },
+      body: JSON.stringify({ reason }),
+    });
+    const data = await res.json();
+    if (data.success) {
+      setRejectModal(null);
+      setRejectReason("");
+      fetchPendingRegs();
+    } else {
+      alert(data.message || t("err_server_short"));
+    }
   };
 
   const deleteRegistryEntry = async (studentId) => {
@@ -332,6 +378,178 @@ function AdminPanel() {
           </div>
         )}
 
+        {!loading && tab === 4 && (
+          <>
+            {rejectModal && (
+              <div style={{
+                position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", zIndex: 1000,
+                display: "flex", alignItems: "center", justifyContent: "center",
+              }}>
+                <div style={{
+                  background: "#fff", borderRadius: "16px", padding: "24px", maxWidth: "420px", width: "90%",
+                  boxShadow: "0 8px 32px rgba(0,0,0,0.2)",
+                }}>
+                  <div style={{ fontWeight: 700, fontSize: "16px", color: "#111827", marginBottom: "8px" }}>
+                    {t("adm_pending_reject_title")}
+                  </div>
+                  <div style={{ fontSize: "13px", color: "#6b7280", marginBottom: "12px" }}>
+                    {rejectModal.last_name} {rejectModal.first_name} ({rejectModal.login})
+                  </div>
+                  <textarea
+                    value={rejectReason}
+                    onChange={(e) => setRejectReason(e.target.value)}
+                    placeholder={t("adm_pending_reject_reason")}
+                    rows={3}
+                    style={{
+                      width: "100%", padding: "10px 12px", borderRadius: "10px",
+                      border: "1.5px solid #e5e7eb", fontSize: "14px", resize: "vertical",
+                      outline: "none", boxSizing: "border-box", marginBottom: "12px",
+                    }}
+                  />
+                  <div style={{ display: "flex", gap: "10px" }}>
+                    <button
+                      onClick={() => rejectPending(rejectModal.id, rejectReason || t("adm_pending_reject_default"))}
+                      style={{
+                        flex: 1, background: "#dc2626", color: "#fff", border: "none",
+                        borderRadius: "8px", padding: "10px", fontSize: "14px", fontWeight: 600, cursor: "pointer",
+                      }}
+                    >
+                      {t("adm_pending_reject_btn")}
+                    </button>
+                    <button
+                      onClick={() => { setRejectModal(null); setRejectReason(""); }}
+                      style={{
+                        flex: 1, background: "#f3f4f6", color: "#374151", border: "none",
+                        borderRadius: "8px", padding: "10px", fontSize: "14px", cursor: "pointer",
+                      }}
+                    >
+                      {t("cancel")}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <div style={{ display: "flex", gap: "12px", marginBottom: "16px", alignItems: "center" }}>
+              <input
+                value={pendingSearch}
+                onChange={(e) => setPendingSearch(e.target.value)}
+                placeholder={t("adm_search")}
+                style={{
+                  flex: 1, padding: "10px 14px", borderRadius: "10px",
+                  border: "1.5px solid #e5e7eb", fontSize: "14px", outline: "none",
+                }}
+              />
+              <button onClick={fetchPendingRegs} style={{
+                background: "#f3f4f6", border: "1px solid #e5e7eb", color: "#374151",
+                borderRadius: "8px", padding: "9px 14px", fontSize: "13px", cursor: "pointer",
+              }}>
+                {t("adm_refresh")}
+              </button>
+            </div>
+
+            {pendingRegs.length === 0 ? (
+              <div style={{ textAlign: "center", padding: "50px", color: "#6b7280" }}>
+                {t("adm_pending_empty")}
+              </div>
+            ) : (
+              <div style={{ background: "#fff", borderRadius: "12px", overflow: "hidden", boxShadow: "0 1px 4px rgba(0,0,0,0.07)" }}>
+                <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                  <thead>
+                    <tr style={{ background: "#f8fafc" }}>
+                      {["#", t("adm_col_name"), t("field_login"), "Email", "IP", t("adm_col_date"), t("adm_col_status"), ""].map((h) => (
+                        <th key={h} style={{
+                          padding: "12px 14px", textAlign: "left", fontSize: "11px",
+                          fontWeight: 700, color: "#6b7280", textTransform: "uppercase",
+                          borderBottom: "1px solid #e5e7eb",
+                        }}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {pendingRegs
+                      .filter((r) => {
+                        const q = pendingSearch.toLowerCase();
+                        return !q ||
+                          r.last_name?.toLowerCase().includes(q) ||
+                          r.first_name?.toLowerCase().includes(q) ||
+                          r.login?.toLowerCase().includes(q) ||
+                          r.email?.toLowerCase().includes(q);
+                      })
+                      .map((r) => {
+                        const fio = [r.last_name, r.first_name, r.middle_name].filter(Boolean).join(" ");
+                        const statusColors = {
+                          pending: { bg: "#fef3c7", color: "#92400e" },
+                          approved: { bg: "#dcfce7", color: "#15803d" },
+                          rejected: { bg: "#fee2e2", color: "#dc2626" },
+                        };
+                        const statusLabels = {
+                          pending: t("adm_pending_status_pending"),
+                          approved: t("adm_pending_status_approved"),
+                          rejected: t("adm_pending_status_rejected"),
+                        };
+                        const sc = statusColors[r.status] || { bg: "#f3f4f6", color: "#6b7280" };
+                        return (
+                          <tr key={r.id} style={{ borderBottom: "1px solid #f3f4f6" }}>
+                            <td style={{ padding: "12px 14px", fontSize: "12px", color: "#9ca3af" }}>{r.id}</td>
+                            <td style={{ padding: "12px 14px" }}>
+                              <div style={{ fontSize: "14px", fontWeight: 600, color: "#111827" }}>{fio}</div>
+                              {r.rejection_reason && r.status === "rejected" && (
+                                <div style={{ fontSize: "11px", color: "#dc2626", marginTop: "2px" }}>
+                                  {r.rejection_reason}
+                                </div>
+                              )}
+                            </td>
+                            <td style={{ padding: "12px 14px", fontSize: "13px", color: "#374151", fontFamily: "monospace" }}>{r.login}</td>
+                            <td style={{ padding: "12px 14px", fontSize: "12px", color: "#6b7280" }}>{r.email || "—"}</td>
+                            <td style={{ padding: "12px 14px", fontSize: "12px", color: "#9ca3af", fontFamily: "monospace" }}>{r.ip || "—"}</td>
+                            <td style={{ padding: "12px 14px", fontSize: "12px", color: "#6b7280" }}>
+                              {r.created_at ? r.created_at.slice(0, 16).replace("T", " ") : "—"}
+                            </td>
+                            <td style={{ padding: "12px 14px" }}>
+                              <span style={{
+                                background: sc.bg, color: sc.color,
+                                borderRadius: "6px", padding: "3px 8px", fontSize: "12px", fontWeight: 700,
+                              }}>
+                                {statusLabels[r.status] || r.status}
+                              </span>
+                            </td>
+                            <td style={{ padding: "12px 14px" }}>
+                              {r.status === "pending" && (
+                                <div style={{ display: "flex", gap: "6px" }}>
+                                  <button
+                                    onClick={() => approvePending(r.id)}
+                                    style={{
+                                      background: "#dcfce7", border: "1px solid #86efac", color: "#15803d",
+                                      borderRadius: "6px", padding: "5px 12px", fontSize: "12px",
+                                      cursor: "pointer", fontWeight: 600,
+                                    }}
+                                  >
+                                    {t("adm_pending_approve")}
+                                  </button>
+                                  <button
+                                    onClick={() => { setRejectModal(r); setRejectReason(""); }}
+                                    style={{
+                                      background: "#fee2e2", border: "1px solid #fca5a5", color: "#dc2626",
+                                      borderRadius: "6px", padding: "5px 12px", fontSize: "12px",
+                                      cursor: "pointer", fontWeight: 600,
+                                    }}
+                                  >
+                                    {t("adm_pending_reject_btn")}
+                                  </button>
+                                </div>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </>
+        )}
+
         {!loading && tab === 3 && (
           <div style={{ background: "#fff", borderRadius: "12px", overflow: "hidden", boxShadow: "0 1px 4px rgba(0,0,0,0.07)" }}>
             <table style={{ width: "100%", borderCollapse: "collapse" }}>
@@ -375,7 +593,7 @@ function AdminPanel() {
           </div>
         )}
 
-        {!loading && tab === 4 && (
+        {!loading && tab === 5 && (
           <div style={{ background: "#111827", borderRadius: "12px", padding: "16px", boxShadow: "0 1px 4px rgba(0,0,0,0.2)" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
               <span style={{ color: "#9ca3af", fontSize: "13px", fontWeight: 700 }}>{t("adm_security_log")}</span>
@@ -404,7 +622,7 @@ function AdminPanel() {
             </div>
           </div>
         )}
-        {!loading && tab === 5 && (
+        {!loading && tab === 6 && (
           <>
             <div style={{
               background: "#fff", borderRadius: "12px", padding: "20px",
