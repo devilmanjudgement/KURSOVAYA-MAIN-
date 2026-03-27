@@ -191,6 +191,17 @@ CREATE TABLE IF NOT EXISTS attendance (
 )
 `).run();
 
+db.prepare(`
+CREATE TABLE IF NOT EXISTS section_posts (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  section_id TEXT,
+  coach_id INTEGER,
+  text TEXT,
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (section_id) REFERENCES sections(id)
+)
+`).run();
+
 /* =========================================================
    Авторизация / Регистрация
 ========================================================= */
@@ -381,6 +392,34 @@ app.delete("/api/sections/:id", (req, res) => {
 });
 
 /* =========================================================
+   Объявления секций («Для своих»)
+========================================================= */
+app.get("/api/sections/:id/posts", (req, res) => {
+  const rows = db.prepare(
+    "SELECT * FROM section_posts WHERE section_id=? ORDER BY created_at DESC"
+  ).all(req.params.id);
+  res.json(rows);
+});
+
+app.post("/api/sections/:id/posts", (req, res) => {
+  const text = sanitize(req.body.text || "");
+  const coach_id = Number(req.body.coach_id);
+  if (!text) return res.json({ success: false, message: "Введите текст" });
+  const section = db.prepare("SELECT coach_id FROM sections WHERE id=?").get(req.params.id);
+  if (!section || section.coach_id !== coach_id) return res.json({ success: false, message: "Нет доступа" });
+  db.prepare("INSERT INTO section_posts(section_id, coach_id, text) VALUES(?,?,?)").run(req.params.id, coach_id, text);
+  res.json({ success: true });
+});
+
+app.delete("/api/sections/:id/posts/:postId", (req, res) => {
+  const coach_id = Number(req.query.coach_id);
+  const section = db.prepare("SELECT coach_id FROM sections WHERE id=?").get(req.params.id);
+  if (!section || section.coach_id !== coach_id) return res.json({ success: false });
+  db.prepare("DELETE FROM section_posts WHERE id=? AND section_id=?").run(req.params.postId, req.params.id);
+  res.json({ success: true });
+});
+
+/* =========================================================
    Бронирования
 ========================================================= */
 app.post("/api/bookings", (req, res) => {
@@ -461,7 +500,7 @@ app.get("/api/teacher/:id/bookings", (req, res) => {
 
 app.get("/api/student/:name/enrollments", (req, res) => {
   const rows = db.prepare(`
-    SELECT b.bookingId, b.status, s.title, s.place, s.image, u.name AS coach, u.id AS coach_id, u.avatar AS coach_avatar
+    SELECT b.bookingId, b.sectionId, b.status, s.title, s.place, s.image, u.name AS coach, u.id AS coach_id, u.avatar AS coach_avatar
     FROM bookings b
     JOIN sections s ON s.id=b.sectionId
     JOIN users u ON u.id=s.coach_id
