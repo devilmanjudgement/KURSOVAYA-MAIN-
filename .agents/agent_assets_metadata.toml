@@ -1,0 +1,8 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "mJISmxYIRXWNpn_3twcfj"
+uri = "file://diploma_kgusport.md"
+type = "text"
+title = "КГУ СПОРТ — материалы для диплома"
