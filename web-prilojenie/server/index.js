@@ -207,6 +207,7 @@ CREATE TABLE IF NOT EXISTS messages (
 `).run();
 
 try { db.prepare("ALTER TABLE messages ADD COLUMN read INTEGER DEFAULT 0").run(); } catch (_) {}
+try { db.prepare("ALTER TABLE pending_registrations ADD COLUMN student_id TEXT").run(); } catch (_) {}
 
 db.prepare(`
 CREATE TABLE IF NOT EXISTS attendance (
@@ -314,10 +315,12 @@ app.post("/api/register", rateLimit(60_000, 10), (req, res) => {
   const first_name = sanitize(req.body.first_name || "");
   const middle_name = sanitize(req.body.middle_name || "");
   const email = sanitize(req.body.email || "").toLowerCase().trim();
+  const student_id = sanitize(req.body.student_id || "");
 
   if (!login || !password || !last_name || !first_name) {
     return res.json({ success: false, message: "Заполните все обязательные поля (Фамилия, Имя, логин, пароль)" });
   }
+  if (!student_id) return res.json({ success: false, message: "Укажите номер студенческого билета" });
   if (login.length < 3) return res.json({ success: false, message: "Логин — минимум 3 символа" });
   if (password.length < 6) return res.json({ success: false, message: "Пароль — минимум 6 символов" });
 
@@ -328,10 +331,10 @@ app.post("/api/register", rateLimit(60_000, 10), (req, res) => {
   if (dupPending) return res.json({ success: false, message: "Заявка с таким логином уже ожидает рассмотрения" });
 
   db.prepare(
-    "INSERT INTO pending_registrations(login,password,last_name,first_name,middle_name,email,ip) VALUES(?,?,?,?,?,?,?)"
-  ).run(login, password, last_name, first_name, middle_name, email, ip);
+    "INSERT INTO pending_registrations(login,password,last_name,first_name,middle_name,email,ip,student_id) VALUES(?,?,?,?,?,?,?,?)"
+  ).run(login, password, last_name, first_name, middle_name, email, ip, student_id);
 
-  secLog("INFO", ip, `New pending registration: ${login} (${last_name} ${first_name})`);
+  secLog("INFO", ip, `New pending registration: ${login} (${last_name} ${first_name}) student_id=${student_id}`);
   res.json({ success: true, pending: true });
 });
 
@@ -841,10 +844,32 @@ app.get("/api/admin/logs", requireAdmin, (req, res) => {
    Заявки на регистрацию (admin)
 ========================================================= */
 app.get("/api/admin/pending-registrations", requireAdmin, (req, res) => {
-  const rows = db.prepare(
-    "SELECT id, login, last_name, first_name, middle_name, email, ip, status, rejection_reason, created_at FROM pending_registrations ORDER BY created_at DESC"
-  ).all();
+  const rows = db.prepare(`
+    SELECT pr.id, pr.login, pr.last_name, pr.first_name, pr.middle_name,
+           pr.email, pr.ip, pr.status, pr.rejection_reason, pr.created_at, pr.student_id,
+           sr.first_name AS reg_first_name, sr.last_name AS reg_last_name,
+           sr.middle_name AS reg_middle_name, sr.group_name AS reg_group_name
+    FROM pending_registrations pr
+    LEFT JOIN student_registry sr ON sr.student_id = pr.student_id
+    ORDER BY pr.created_at DESC
+  `).all();
   res.json(rows);
+});
+
+app.get("/api/registration-status", rateLimit(60_000, 20), (req, res) => {
+  const login = sanitize(req.query.login || "");
+  if (!login) return res.json({ success: false, message: "Укажите логин" });
+  const pr = db.prepare(
+    "SELECT id, status, rejection_reason, created_at, last_name, first_name FROM pending_registrations WHERE login=? ORDER BY created_at DESC LIMIT 1"
+  ).get(login);
+  if (!pr) return res.json({ success: false, message: "Заявка с таким логином не найдена" });
+  res.json({
+    success: true,
+    status: pr.status,
+    rejection_reason: pr.rejection_reason || null,
+    created_at: pr.created_at,
+    name: [pr.last_name, pr.first_name].filter(Boolean).join(" "),
+  });
 });
 
 app.post("/api/admin/pending-registrations/:id/approve", requireAdmin, (req, res) => {

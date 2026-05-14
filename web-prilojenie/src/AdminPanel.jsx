@@ -453,98 +453,189 @@ function AdminPanel() {
                 {t("adm_pending_empty")}
               </div>
             ) : (
-              <div style={{ background: "#fff", borderRadius: "12px", overflow: "hidden", boxShadow: "0 1px 4px rgba(0,0,0,0.07)" }}>
-                <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                  <thead>
-                    <tr style={{ background: "#f8fafc" }}>
-                      {["#", t("adm_col_name"), t("field_login"), "Email", "IP", t("adm_col_date"), t("adm_col_status"), ""].map((h) => (
-                        <th key={h} style={{
-                          padding: "12px 14px", textAlign: "left", fontSize: "11px",
-                          fontWeight: 700, color: "#6b7280", textTransform: "uppercase",
-                          borderBottom: "1px solid #e5e7eb",
-                        }}>{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {pendingRegs
-                      .filter((r) => {
-                        const q = pendingSearch.toLowerCase();
-                        return !q ||
-                          r.last_name?.toLowerCase().includes(q) ||
-                          r.first_name?.toLowerCase().includes(q) ||
-                          r.login?.toLowerCase().includes(q) ||
-                          r.email?.toLowerCase().includes(q);
-                      })
-                      .map((r) => {
-                        const fio = [r.last_name, r.first_name, r.middle_name].filter(Boolean).join(" ");
-                        const statusColors = {
-                          pending: { bg: "#fef3c7", color: "#92400e" },
-                          approved: { bg: "#dcfce7", color: "#15803d" },
-                          rejected: { bg: "#fee2e2", color: "#dc2626" },
-                        };
-                        const statusLabels = {
-                          pending: t("adm_pending_status_pending"),
-                          approved: t("adm_pending_status_approved"),
-                          rejected: t("adm_pending_status_rejected"),
-                        };
-                        const sc = statusColors[r.status] || { bg: "#f3f4f6", color: "#6b7280" };
-                        return (
-                          <tr key={r.id} style={{ borderBottom: "1px solid #f3f4f6" }}>
-                            <td style={{ padding: "12px 14px", fontSize: "12px", color: "#9ca3af" }}>{r.id}</td>
-                            <td style={{ padding: "12px 14px" }}>
-                              <div style={{ fontSize: "14px", fontWeight: 600, color: "#111827" }}>{fio}</div>
-                              {r.rejection_reason && r.status === "rejected" && (
-                                <div style={{ fontSize: "11px", color: "#dc2626", marginTop: "2px" }}>
-                                  {r.rejection_reason}
-                                </div>
-                              )}
-                            </td>
-                            <td style={{ padding: "12px 14px", fontSize: "13px", color: "#374151", fontFamily: "monospace" }}>{r.login}</td>
-                            <td style={{ padding: "12px 14px", fontSize: "12px", color: "#6b7280" }}>{r.email || "—"}</td>
-                            <td style={{ padding: "12px 14px", fontSize: "12px", color: "#9ca3af", fontFamily: "monospace" }}>{r.ip || "—"}</td>
-                            <td style={{ padding: "12px 14px", fontSize: "12px", color: "#6b7280" }}>
-                              {r.created_at ? r.created_at.slice(0, 16).replace("T", " ") : "—"}
-                            </td>
-                            <td style={{ padding: "12px 14px" }}>
-                              <span style={{
-                                background: sc.bg, color: sc.color,
-                                borderRadius: "6px", padding: "3px 8px", fontSize: "12px", fontWeight: 700,
-                              }}>
-                                {statusLabels[r.status] || r.status}
+              <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+                {pendingRegs
+                  .filter((r) => {
+                    const q = pendingSearch.toLowerCase();
+                    return !q ||
+                      r.last_name?.toLowerCase().includes(q) ||
+                      r.first_name?.toLowerCase().includes(q) ||
+                      r.login?.toLowerCase().includes(q) ||
+                      r.email?.toLowerCase().includes(q) ||
+                      r.student_id?.toLowerCase().includes(q);
+                  })
+                  .map((r) => {
+                    const fio = [r.last_name, r.first_name, r.middle_name].filter(Boolean).join(" ");
+                    const regFio = r.reg_last_name
+                      ? [r.reg_last_name, r.reg_first_name, r.reg_middle_name].filter(Boolean).join(" ")
+                      : null;
+
+                    const fioMatch = regFio
+                      ? fio.trim().toLowerCase() === regFio.trim().toLowerCase()
+                      : null;
+
+                    const statusColors = {
+                      pending: { bg: "#fef3c7", color: "#92400e" },
+                      approved: { bg: "#dcfce7", color: "#15803d" },
+                      rejected: { bg: "#fee2e2", color: "#dc2626" },
+                    };
+                    const statusLabels = {
+                      pending: t("adm_pending_status_pending"),
+                      approved: t("adm_pending_status_approved"),
+                      rejected: t("adm_pending_status_rejected"),
+                    };
+                    const sc = statusColors[r.status] || { bg: "#f3f4f6", color: "#6b7280" };
+
+                    let matchBanner = null;
+                    if (!r.student_id) {
+                      matchBanner = { bg: "#f3f4f6", color: "#6b7280", icon: "—", text: "Номер студ. билета не указан" };
+                    } else if (!regFio) {
+                      matchBanner = { bg: "#fff7ed", color: "#c2410c", icon: "⚠️", text: `Студ. билет ${r.student_id} не найден в реестре` };
+                    } else if (fioMatch) {
+                      matchBanner = { bg: "#f0fdf4", color: "#15803d", icon: "✅", text: "ФИО совпадает с реестром" };
+                    } else {
+                      matchBanner = { bg: "#fff1f2", color: "#dc2626", icon: "❌", text: "ФИО не совпадает с реестром!" };
+                    }
+
+                    return (
+                      <div key={r.id} style={{
+                        background: "#fff", borderRadius: "14px",
+                        boxShadow: "0 1px 6px rgba(0,0,0,0.09)",
+                        border: r.status === "pending" ? "1.5px solid #e5e7eb" : "1.5px solid #f3f4f6",
+                        overflow: "hidden",
+                      }}>
+                        <div style={{
+                          display: "flex", alignItems: "center", justifyContent: "space-between",
+                          padding: "12px 16px", borderBottom: "1px solid #f3f4f6",
+                          background: "#f8fafc",
+                        }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                            <span style={{ fontSize: "12px", color: "#9ca3af" }}>#{r.id}</span>
+                            <span style={{
+                              background: sc.bg, color: sc.color,
+                              borderRadius: "6px", padding: "2px 10px", fontSize: "12px", fontWeight: 700,
+                            }}>
+                              {statusLabels[r.status] || r.status}
+                            </span>
+                          </div>
+                          <span style={{ fontSize: "12px", color: "#9ca3af" }}>
+                            {r.created_at ? r.created_at.slice(0, 16).replace("T", " ") : "—"}
+                          </span>
+                        </div>
+
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0" }}>
+                          <div style={{ padding: "16px", borderRight: "1px solid #f3f4f6" }}>
+                            <div style={{
+                              fontSize: "10px", fontWeight: 700, color: "#6b7280",
+                              textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "10px",
+                            }}>
+                              📋 Заявка студента
+                            </div>
+                            <div style={{ fontSize: "15px", fontWeight: 700, color: "#111827", marginBottom: "6px" }}>
+                              {fio}
+                            </div>
+                            <div style={{
+                              display: "inline-flex", alignItems: "center", gap: "6px",
+                              background: "#eff6ff", border: "1px solid #bfdbfe",
+                              borderRadius: "8px", padding: "4px 10px", marginBottom: "8px",
+                            }}>
+                              <span style={{ fontSize: "11px", color: "#6b7280" }}>Студ. билет:</span>
+                              <span style={{ fontSize: "13px", fontWeight: 700, color: "#1d4ed8", fontFamily: "monospace" }}>
+                                {r.student_id || "—"}
                               </span>
-                            </td>
-                            <td style={{ padding: "12px 14px" }}>
-                              {r.status === "pending" && (
-                                <div style={{ display: "flex", gap: "6px" }}>
-                                  <button
-                                    onClick={() => approvePending(r.id)}
-                                    style={{
-                                      background: "#dcfce7", border: "1px solid #86efac", color: "#15803d",
-                                      borderRadius: "6px", padding: "5px 12px", fontSize: "12px",
-                                      cursor: "pointer", fontWeight: 600,
-                                    }}
-                                  >
-                                    {t("adm_pending_approve")}
-                                  </button>
-                                  <button
-                                    onClick={() => { setRejectModal(r); setRejectReason(""); }}
-                                    style={{
-                                      background: "#fee2e2", border: "1px solid #fca5a5", color: "#dc2626",
-                                      borderRadius: "6px", padding: "5px 12px", fontSize: "12px",
-                                      cursor: "pointer", fontWeight: 600,
-                                    }}
-                                  >
-                                    {t("adm_pending_reject_btn")}
-                                  </button>
+                            </div>
+                            <div style={{ fontSize: "12px", color: "#6b7280", marginBottom: "3px" }}>
+                              🔑 <span style={{ fontFamily: "monospace", color: "#374151" }}>{r.login}</span>
+                            </div>
+                            <div style={{ fontSize: "12px", color: "#6b7280", marginBottom: "3px" }}>
+                              📧 {r.email || "—"}
+                            </div>
+                            <div style={{ fontSize: "11px", color: "#9ca3af" }}>
+                              IP: {r.ip || "—"}
+                            </div>
+                          </div>
+
+                          <div style={{ padding: "16px" }}>
+                            <div style={{
+                              fontSize: "10px", fontWeight: 700, color: "#6b7280",
+                              textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "10px",
+                            }}>
+                              📂 Данные из реестра
+                            </div>
+                            {regFio ? (
+                              <>
+                                <div style={{
+                                  fontSize: "15px", fontWeight: 700,
+                                  color: fioMatch ? "#15803d" : "#dc2626",
+                                  marginBottom: "6px",
+                                }}>
+                                  {regFio}
                                 </div>
-                              )}
-                            </td>
-                          </tr>
-                        );
-                      })}
-                  </tbody>
-                </table>
+                                <div style={{ fontSize: "12px", color: "#6b7280", marginBottom: "3px" }}>
+                                  🎓 Группа: <b style={{ color: "#374151" }}>{r.reg_group_name || "—"}</b>
+                                </div>
+                                <div style={{ fontSize: "12px", color: "#6b7280" }}>
+                                  🪪 Студ. билет: <b style={{ color: "#374151", fontFamily: "monospace" }}>{r.student_id}</b>
+                                </div>
+                              </>
+                            ) : (
+                              <div style={{ fontSize: "13px", color: "#9ca3af", paddingTop: "4px" }}>
+                                {r.student_id ? "Не найден в реестре" : "Номер не указан"}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        <div style={{
+                          margin: "0 16px 12px",
+                          background: matchBanner.bg, color: matchBanner.color,
+                          borderRadius: "8px", padding: "7px 12px",
+                          fontSize: "12px", fontWeight: 600,
+                          display: "flex", alignItems: "center", gap: "6px",
+                        }}>
+                          {matchBanner.icon} {matchBanner.text}
+                        </div>
+
+                        {r.rejection_reason && r.status === "rejected" && (
+                          <div style={{
+                            margin: "0 16px 12px", background: "#fff1f2",
+                            border: "1px solid #fca5a5", borderRadius: "8px",
+                            padding: "7px 12px", fontSize: "12px", color: "#dc2626",
+                          }}>
+                            <b>Причина отклонения:</b> {r.rejection_reason}
+                          </div>
+                        )}
+
+                        {r.status === "pending" && (
+                          <div style={{
+                            padding: "12px 16px", borderTop: "1px solid #f3f4f6",
+                            display: "flex", gap: "8px",
+                          }}>
+                            <button
+                              onClick={() => approvePending(r.id)}
+                              style={{
+                                flex: 1, background: "#16a34a", border: "none", color: "#fff",
+                                borderRadius: "8px", padding: "9px", fontSize: "13px",
+                                cursor: "pointer", fontWeight: 700,
+                              }}
+                            >
+                              ✓ {t("adm_pending_approve")}
+                            </button>
+                            <button
+                              onClick={() => { setRejectModal(r); setRejectReason(""); }}
+                              style={{
+                                flex: 1, background: "#fee2e2", border: "1px solid #fca5a5", color: "#dc2626",
+                                borderRadius: "8px", padding: "9px", fontSize: "13px",
+                                cursor: "pointer", fontWeight: 700,
+                              }}
+                            >
+                              ✕ {t("adm_pending_reject_btn")}
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
               </div>
             )}
           </>

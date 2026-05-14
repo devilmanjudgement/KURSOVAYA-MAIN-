@@ -15,6 +15,7 @@ import SectionsList from './SectionsList';
 import Chat from './Chat';
 import AdminPanel from './AdminPanel';
 import Attendance from './Attendance';
+import RegStatus from './RegStatus';
 
 function App() {
   return (
@@ -36,6 +37,7 @@ function App() {
             <Route path="/chat" element={<Chat />} />
             <Route path="/admin" element={<AdminPanel />} />
             <Route path="/attendance" element={<Attendance />} />
+            <Route path="/reg-status" element={<RegStatus />} />
           </Routes>
         </BrowserRouter>
       </LangProvider>

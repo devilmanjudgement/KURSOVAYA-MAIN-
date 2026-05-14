@@ -12,7 +12,7 @@ function Register() {
   const [agreed, setAgreed] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
-  const [fio, setFio] = useState({ last_name: "", first_name: "", middle_name: "" });
+  const [fio, setFio] = useState({ last_name: "", first_name: "", middle_name: "", student_id: "" });
   const [form, setForm] = useState({ login: "", password: "", email: "" });
   const [code, setCode] = useState("");
   const [sentCode, setSentCode] = useState("");
@@ -29,6 +29,7 @@ function Register() {
 
     if (!fio.last_name.trim()) return setError(t("reg_last_name") + " — обязательное поле");
     if (!fio.first_name.trim()) return setError(t("reg_first_name") + " — обязательное поле");
+    if (!fio.student_id.trim()) return setError("Номер студенческого билета — обязательное поле");
     if (!form.login.trim()) return setError(t("err_no_login"));
     if (form.login.trim().length < 3) return setError(t("err_login_short"));
     if (!form.password.trim()) return setError(t("err_no_pass"));
@@ -86,6 +87,7 @@ function Register() {
           first_name: fio.first_name.trim(),
           middle_name: fio.middle_name.trim(),
           email: form.email.trim(),
+          student_id: fio.student_id.trim(),
         }),
       });
       const regData = await regRes.json();
@@ -133,11 +135,24 @@ function Register() {
                 <b>{t("reg_middle_name")}:</b> {fio.middle_name}
               </div>
             )}
+            <div style={{ fontSize: "13px", color: "#374151", marginBottom: "4px" }}>
+              <b>Студ. билет:</b> {fio.student_id}
+            </div>
             <div style={{ fontSize: "13px", color: "#374151" }}>
               <b>{t("field_login")}:</b> {form.login}
             </div>
           </div>
-          <button onClick={() => navigate("/")} className="login-btn">
+          <button
+            onClick={() => navigate(`/reg-status?login=${encodeURIComponent(form.login)}`)}
+            className="login-btn"
+            style={{ marginBottom: "10px" }}
+          >
+            🔍 Проверить статус заявки
+          </button>
+          <button onClick={() => navigate("/")} style={{
+            background: "transparent", border: "none", color: "#888",
+            fontSize: "13px", cursor: "pointer", width: "100%",
+          }}>
             {t("reg_back_login")}
           </button>
         </div>
@@ -193,13 +208,22 @@ function Register() {
                 autoComplete="given-name"
               />
               <input
-                style={{ ...inputStyle, marginBottom: 0 }}
+                style={{ ...inputStyle, marginBottom: "8px" }}
                 name="middle_name"
                 value={fio.middle_name}
                 onChange={handleFioChange}
                 placeholder={t("reg_middle_name") + " (" + t("reg_optional") + ")"}
                 maxLength={60}
                 autoComplete="additional-name"
+              />
+              <input
+                style={{ ...inputStyle, marginBottom: 0, background: "#f0f6ff", border: "1.5px solid #93c5fd" }}
+                name="student_id"
+                value={fio.student_id}
+                onChange={handleFioChange}
+                placeholder="Номер студенческого билета *"
+                maxLength={30}
+                autoComplete="off"
               />
             </div>
 
