@@ -1,11 +1,14 @@
 export function ERDiagram() {
+  const ROW_H = 26;
+  const HEADER_H = 34;
+  const COL_W = 320;
+
   const tables = [
     {
       id: "users",
       label: "users",
-      x: 60,
-      y: 320,
-      color: "#3b82f6",
+      x: 50,
+      y: 310,
       fields: [
         { name: "id", type: "INTEGER", pk: true },
         { name: "name", type: "TEXT" },
@@ -21,13 +24,12 @@ export function ERDiagram() {
     {
       id: "sections",
       label: "sections",
-      x: 460,
-      y: 60,
-      color: "#10b981",
+      x: 440,
+      y: 50,
       fields: [
         { name: "id", type: "TEXT", pk: true },
         { name: "title", type: "TEXT" },
-        { name: "coach_id", type: "INTEGER", fk: "users.id" },
+        { name: "coach_id", type: "INTEGER", fk: true },
         { name: "place", type: "TEXT" },
         { name: "color", type: "TEXT" },
         { name: "image", type: "TEXT" },
@@ -38,9 +40,8 @@ export function ERDiagram() {
     {
       id: "bookings",
       label: "bookings",
-      x: 460,
-      y: 440,
-      color: "#f59e0b",
+      x: 440,
+      y: 430,
       fields: [
         { name: "bookingId", type: "INTEGER", pk: true },
         { name: "sectionId", type: "TEXT" },
@@ -53,27 +54,25 @@ export function ERDiagram() {
     {
       id: "schedule",
       label: "schedule",
-      x: 860,
-      y: 60,
-      color: "#8b5cf6",
+      x: 840,
+      y: 50,
       fields: [
         { name: "id", type: "INTEGER", pk: true },
         { name: "day_of_week", type: "TEXT" },
         { name: "time", type: "TEXT" },
-        { name: "section_id", type: "TEXT", fk: "sections.id" },
+        { name: "section_id", type: "TEXT", fk: true },
         { name: "coach_id", type: "INTEGER" },
       ],
     },
     {
       id: "messages",
       label: "messages",
-      x: 860,
-      y: 360,
-      color: "#ec4899",
+      x: 840,
+      y: 330,
       fields: [
         { name: "id", type: "INTEGER", pk: true },
-        { name: "sender_id", type: "INTEGER", fk: "users.id" },
-        { name: "receiver_id", type: "INTEGER", fk: "users.id" },
+        { name: "sender_id", type: "INTEGER", fk: true },
+        { name: "receiver_id", type: "INTEGER", fk: true },
         { name: "text", type: "TEXT" },
         { name: "read", type: "INTEGER" },
         { name: "created_at", type: "TEXT" },
@@ -82,9 +81,8 @@ export function ERDiagram() {
     {
       id: "attendance",
       label: "attendance",
-      x: 860,
-      y: 620,
-      color: "#f97316",
+      x: 840,
+      y: 590,
       fields: [
         { name: "id", type: "INTEGER", pk: true },
         { name: "student_name", type: "TEXT" },
@@ -98,13 +96,12 @@ export function ERDiagram() {
     {
       id: "student_registry",
       label: "student_registry",
-      x: 60,
+      x: 50,
       y: 700,
-      color: "#14b8a6",
       fields: [
         { name: "student_id", type: "TEXT", pk: true },
-        { name: "first_name", type: "TEXT" },
-        { name: "last_name", type: "TEXT" },
+        { name: "first_name", type: "TEXT NOT NULL" },
+        { name: "last_name", type: "TEXT NOT NULL" },
         { name: "middle_name", type: "TEXT" },
         { name: "group_name", type: "TEXT" },
       ],
@@ -112,15 +109,14 @@ export function ERDiagram() {
     {
       id: "pending_registrations",
       label: "pending_registrations",
-      x: 460,
+      x: 440,
       y: 700,
-      color: "#ef4444",
       fields: [
         { name: "id", type: "INTEGER", pk: true },
         { name: "login", type: "TEXT" },
         { name: "password", type: "TEXT" },
-        { name: "last_name", type: "TEXT" },
-        { name: "first_name", type: "TEXT" },
+        { name: "last_name", type: "TEXT NOT NULL" },
+        { name: "first_name", type: "TEXT NOT NULL" },
         { name: "middle_name", type: "TEXT" },
         { name: "student_id", type: "TEXT" },
         { name: "email", type: "TEXT" },
@@ -133,12 +129,11 @@ export function ERDiagram() {
     {
       id: "section_posts",
       label: "section_posts",
-      x: 1240,
-      y: 60,
-      color: "#6366f1",
+      x: 1200,
+      y: 50,
       fields: [
         { name: "id", type: "INTEGER", pk: true },
-        { name: "section_id", type: "TEXT", fk: "sections.id" },
+        { name: "section_id", type: "TEXT", fk: true },
         { name: "coach_id", type: "INTEGER" },
         { name: "text", type: "TEXT" },
         { name: "created_at", type: "TEXT" },
@@ -146,189 +141,180 @@ export function ERDiagram() {
     },
   ];
 
-  const ROW_H = 24;
-  const HEADER_H = 36;
-  const PAD = 0;
-  const COL_W = 340;
-
-  function tableHeight(t: (typeof tables)[0]) {
-    return HEADER_H + t.fields.length * ROW_H + PAD * 2;
+  function tableH(t: (typeof tables)[0]) {
+    return HEADER_H + t.fields.length * ROW_H;
   }
-
-  function tableRight(t: (typeof tables)[0]) {
+  function rowCY(t: (typeof tables)[0], fi: number) {
+    return t.y + HEADER_H + fi * ROW_H + ROW_H / 2;
+  }
+  function tRight(t: (typeof tables)[0]) {
     return t.x + COL_W;
   }
 
-  function rowY(t: (typeof tables)[0], fieldIdx: number) {
-    return t.y + HEADER_H + PAD + fieldIdx * ROW_H + ROW_H / 2;
-  }
-
-  function fieldIndex(tableId: string, fieldName: string) {
-    const t = tables.find((x) => x.id === tableId)!;
-    return t.fields.findIndex((f) => f.name === fieldName);
-  }
-
   type Rel = {
-    from: string;
-    fromField: string;
-    to: string;
-    toField: string;
-    card: "one" | "many";
+    fromId: string; fromField: string;
+    toId: string;   toField: string;
     label?: string;
   };
 
   const relations: Rel[] = [
-    { from: "sections", fromField: "coach_id", to: "users", toField: "id", card: "many" },
-    { from: "messages", fromField: "sender_id", to: "users", toField: "id", card: "many", label: "sender" },
-    { from: "messages", fromField: "receiver_id", to: "users", toField: "id", card: "many", label: "receiver" },
-    { from: "schedule", fromField: "section_id", to: "sections", toField: "id", card: "many" },
-    { from: "section_posts", fromField: "section_id", to: "sections", toField: "id", card: "many" },
+    { fromId: "sections",      fromField: "coach_id",    toId: "users",    toField: "id" },
+    { fromId: "messages",      fromField: "sender_id",   toId: "users",    toField: "id", label: "sender" },
+    { fromId: "messages",      fromField: "receiver_id", toId: "users",    toField: "id", label: "receiver" },
+    { fromId: "schedule",      fromField: "section_id",  toId: "sections", toField: "id" },
+    { fromId: "section_posts", fromField: "section_id",  toId: "sections", toField: "id" },
   ];
 
-  function crowFoot(x: number, y: number, dir: "left" | "right", type: "one" | "many") {
-    const size = 10;
-    const gap = 6;
-    if (type === "many") {
-      if (dir === "right") {
-        return (
-          <g>
-            <line x1={x} y1={y} x2={x + size} y2={y - size} stroke="#94a3b8" strokeWidth={1.5} />
-            <line x1={x} y1={y} x2={x + size} y2={y + size} stroke="#94a3b8" strokeWidth={1.5} />
-            <line x1={x} y1={y} x2={x + size} y2={y} stroke="#94a3b8" strokeWidth={1.5} />
-            <line x1={x + size + gap} y1={y - size} x2={x + size + gap} y2={y + size} stroke="#94a3b8" strokeWidth={1.5} />
-          </g>
-        );
-      } else {
-        return (
-          <g>
-            <line x1={x} y1={y} x2={x - size} y2={y - size} stroke="#94a3b8" strokeWidth={1.5} />
-            <line x1={x} y1={y} x2={x - size} y2={y + size} stroke="#94a3b8" strokeWidth={1.5} />
-            <line x1={x} y1={y} x2={x - size} y2={y} stroke="#94a3b8" strokeWidth={1.5} />
-            <line x1={x - size - gap} y1={y - size} x2={x - size - gap} y2={y + size} stroke="#94a3b8" strokeWidth={1.5} />
-          </g>
-        );
-      }
-    } else {
-      if (dir === "right") {
-        return (
-          <g>
-            <line x1={x + gap} y1={y - size} x2={x + gap} y2={y + size} stroke="#94a3b8" strokeWidth={1.5} />
-            <line x1={x + gap * 2} y1={y - size} x2={x + gap * 2} y2={y + size} stroke="#94a3b8" strokeWidth={1.5} />
-          </g>
-        );
-      } else {
-        return (
-          <g>
-            <line x1={x - gap} y1={y - size} x2={x - gap} y2={y + size} stroke="#94a3b8" strokeWidth={1.5} />
-            <line x1={x - gap * 2} y1={y - size} x2={x - gap * 2} y2={y + size} stroke="#94a3b8" strokeWidth={1.5} />
-          </g>
-        );
-      }
-    }
+  function OneSymbol({ x, y, side }: { x: number; y: number; side: "L" | "R" }) {
+    const d = side === "R" ? 1 : -1;
+    const tick = 8;
+    return (
+      <g>
+        <line x1={x + d * 6}  y1={y - tick} x2={x + d * 6}  y2={y + tick} stroke="#222" strokeWidth={1.5} />
+        <line x1={x + d * 12} y1={y - tick} x2={x + d * 12} y2={y + tick} stroke="#222" strokeWidth={1.5} />
+      </g>
+    );
+  }
+
+  function ManySymbol({ x, y, side }: { x: number; y: number; side: "L" | "R" }) {
+    const d = side === "R" ? 1 : -1;
+    const spread = 9;
+    return (
+      <g>
+        <line x1={x} y1={y} x2={x + d * 14} y2={y - spread} stroke="#222" strokeWidth={1.5} />
+        <line x1={x} y1={y} x2={x + d * 14} y2={y}           stroke="#222" strokeWidth={1.5} />
+        <line x1={x} y1={y} x2={x + d * 14} y2={y + spread}  stroke="#222" strokeWidth={1.5} />
+        <line x1={x + d * 20} y1={y - spread} x2={x + d * 20} y2={y + spread} stroke="#222" strokeWidth={1.5} />
+      </g>
+    );
   }
 
   function renderRelation(rel: Rel, idx: number) {
-    const fromTable = tables.find((t) => t.id === rel.from)!;
-    const toTable = tables.find((t) => t.id === rel.to)!;
-    const fromFi = fieldIndex(rel.from, rel.fromField);
-    const toFi = fieldIndex(rel.to, rel.toField);
+    const fT = tables.find(t => t.id === rel.fromId)!;
+    const tT = tables.find(t => t.id === rel.toId)!;
+    const fFi = fT.fields.findIndex(f => f.name === rel.fromField);
+    const tFi = tT.fields.findIndex(f => f.name === rel.toField);
+    const fy = rowCY(fT, fFi);
+    const ty = rowCY(tT, tFi);
 
-    const fromY = rowY(fromTable, fromFi);
-    const toY = rowY(toTable, toFi);
-
-    const fromRight = tableRight(fromTable);
-    const toRight = tableRight(toTable);
-
-    let x1: number, x2: number, fromDir: "left" | "right", toDir: "left" | "right";
-
-    if (fromTable.x > toTable.x + COL_W) {
-      x1 = fromTable.x;
-      x2 = toRight;
-      fromDir = "left";
-      toDir = "right";
-    } else if (toTable.x > fromTable.x + COL_W) {
-      x1 = fromRight;
-      x2 = toTable.x;
-      fromDir = "right";
-      toDir = "left";
+    let x1: number, x2: number, fromSide: "L"|"R", toSide: "L"|"R";
+    if (tRight(fT) <= tT.x) {
+      x1 = tRight(fT); x2 = tT.x; fromSide = "R"; toSide = "L";
+    } else if (tRight(tT) <= fT.x) {
+      x1 = fT.x; x2 = tRight(tT); fromSide = "L"; toSide = "R";
     } else {
-      x1 = fromRight;
-      x2 = toTable.x;
-      fromDir = "right";
-      toDir = "left";
+      x1 = tRight(fT); x2 = tT.x; fromSide = "R"; toSide = "L";
     }
 
-    const midX = (x1 + x2) / 2 + (idx % 2 === 0 ? 0 : idx * 4 - 8);
-
-    const path = `M ${x1} ${fromY} C ${midX} ${fromY}, ${midX} ${toY}, ${x2} ${toY}`;
+    const offset = (idx % 3 - 1) * 18;
+    const mx = (x1 + x2) / 2 + offset;
+    const path = `M${x1},${fy} C${mx},${fy} ${mx},${ty} ${x2},${ty}`;
 
     return (
-      <g key={`${rel.from}-${rel.fromField}-${rel.to}-${idx}`}>
-        <path d={path} fill="none" stroke="#475569" strokeWidth={1.5} strokeDasharray={rel.label ? "5,3" : "none"} />
-        {crowFoot(x1, fromY, fromDir, "many")}
-        {crowFoot(x2, toY, toDir, "one")}
+      <g key={`${rel.fromId}-${rel.fromField}-${idx}`}>
+        <path d={path} fill="none" stroke="#555" strokeWidth={1.4} />
+        <ManySymbol x={x1} y={fy} side={fromSide} />
+        <OneSymbol  x={x2} y={ty} side={toSide} />
         {rel.label && (
-          <text x={midX} y={(fromY + toY) / 2 - 6} textAnchor="middle" fill="#94a3b8" fontSize={10} fontFamily="monospace">
-            {rel.label}
+          <text x={mx} y={(fy + ty) / 2 - 5} textAnchor="middle"
+            fill="#666" fontSize={10} fontStyle="italic" fontFamily="serif">
+            «{rel.label}»
           </text>
         )}
       </g>
     );
   }
 
-  const svgW = 1620;
-  const svgH = 980;
+  const SVG_W = 1570;
+  const SVG_H = 1010;
 
   return (
-    <div style={{ background: "#0f172a", minHeight: "100vh", padding: 24, fontFamily: "monospace" }}>
-      <div style={{ marginBottom: 16 }}>
-        <span style={{ color: "#94a3b8", fontSize: 13 }}>КГУ СПОРТ — </span>
-        <span style={{ color: "#f1f5f9", fontSize: 16, fontWeight: 700 }}>ER-диаграмма базы данных (Crow's Foot)</span>
+    <div style={{
+      background: "#fff",
+      minHeight: "100vh",
+      padding: "24px 28px",
+      fontFamily: "'Times New Roman', Times, serif",
+      color: "#111",
+    }}>
+      <div style={{ textAlign: "center", marginBottom: 20 }}>
+        <div style={{ fontSize: 15, fontWeight: 700, letterSpacing: 0.3 }}>
+          Диаграмма «сущность–связь» базы данных веб-приложения КГУ СПОРТ
+        </div>
+        <div style={{ fontSize: 12, color: "#555", marginTop: 4 }}>
+          (нотация Crow's Foot, СУБД SQLite)
+        </div>
       </div>
 
-      <div style={{ overflowX: "auto", overflowY: "auto" }}>
-        <svg width={svgW} height={svgH} viewBox={`0 0 ${svgW} ${svgH}`}>
-          <defs>
-            <filter id="shadow">
-              <feDropShadow dx="0" dy="2" stdDeviation="4" floodColor="#000" floodOpacity="0.4" />
-            </filter>
-          </defs>
+      <div style={{ overflowX: "auto" }}>
+        <svg width={SVG_W} height={SVG_H} viewBox={`0 0 ${SVG_W} ${SVG_H}`}
+          style={{ display: "block", border: "1px solid #ccc" }}>
 
-          {relations.map((rel, i) => renderRelation(rel, i))}
+          {relations.map((r, i) => renderRelation(r, i))}
 
-          {tables.map((t) => {
-            const h = tableHeight(t);
+          {tables.map(t => {
+            const h = tableH(t);
             return (
-              <g key={t.id} filter="url(#shadow)">
-                <rect x={t.x} y={t.y} width={COL_W} height={h} rx={8} fill="#1e293b" stroke={t.color} strokeWidth={2} />
-                <rect x={t.x} y={t.y} width={COL_W} height={HEADER_H} rx={8} fill={t.color} />
-                <rect x={t.x} y={t.y + HEADER_H - 4} width={COL_W} height={8} fill={t.color} />
-                <text x={t.x + COL_W / 2} y={t.y + HEADER_H / 2 + 5} textAnchor="middle" fill="#fff" fontSize={14} fontWeight={700} fontFamily="monospace">
+              <g key={t.id}>
+                <rect x={t.x} y={t.y} width={COL_W} height={h}
+                  fill="#fff" stroke="#333" strokeWidth={1.5} />
+
+                <rect x={t.x} y={t.y} width={COL_W} height={HEADER_H}
+                  fill="#1a3557" stroke="#1a3557" />
+                <text x={t.x + COL_W / 2} y={t.y + HEADER_H / 2 + 5}
+                  textAnchor="middle" fill="#fff"
+                  fontSize={13} fontWeight={700}
+                  fontFamily="'Times New Roman', Times, serif">
                   {t.label}
                 </text>
 
+                <line x1={t.x} y1={t.y + HEADER_H}
+                      x2={t.x + COL_W} y2={t.y + HEADER_H}
+                      stroke="#333" strokeWidth={1.5} />
+
                 {t.fields.map((f, fi) => {
-                  const fy = t.y + HEADER_H + PAD + fi * ROW_H;
+                  const fy = t.y + HEADER_H + fi * ROW_H;
                   const isLast = fi === t.fields.length - 1;
+                  const isEven = fi % 2 === 1;
                   return (
                     <g key={f.name}>
-                      {!isLast && (
-                        <line x1={t.x + 1} y1={fy + ROW_H} x2={t.x + COL_W - 1} y2={fy + ROW_H} stroke="#334155" strokeWidth={1} />
+                      {isEven && (
+                        <rect x={t.x + 1} y={fy} width={COL_W - 2} height={ROW_H}
+                          fill="#f5f7fa" />
                       )}
+                      {!isLast && (
+                        <line x1={t.x} y1={fy + ROW_H}
+                              x2={t.x + COL_W} y2={fy + ROW_H}
+                              stroke="#ccc" strokeWidth={0.8} />
+                      )}
+
                       {f.pk && (
-                        <text x={t.x + 12} y={fy + ROW_H / 2 + 4} fill="#fbbf24" fontSize={10} fontFamily="monospace" fontWeight={700}>
-                          PK
-                        </text>
+                        <>
+                          <text x={t.x + 10} y={fy + ROW_H / 2 + 4}
+                            fill="#1a3557" fontSize={10} fontWeight={700}
+                            fontFamily="'Times New Roman', Times, serif">🔑</text>
+                        </>
                       )}
                       {f.fk && !f.pk && (
-                        <text x={t.x + 12} y={fy + ROW_H / 2 + 4} fill="#60a5fa" fontSize={10} fontFamily="monospace" fontWeight={700}>
-                          FK
-                        </text>
+                        <text x={t.x + 9} y={fy + ROW_H / 2 + 4}
+                          fill="#c0392b" fontSize={10} fontWeight={700}
+                          fontFamily="'Times New Roman', Times, serif">FK</text>
                       )}
-                      <text x={t.x + 42} y={fy + ROW_H / 2 + 4} fill={f.pk ? "#fbbf24" : f.fk ? "#93c5fd" : "#e2e8f0"} fontSize={12} fontFamily="monospace" fontWeight={f.pk ? 700 : 400}>
+
+                      <text
+                        x={t.x + (f.pk ? 28 : f.fk ? 28 : 12)}
+                        y={fy + ROW_H / 2 + 4}
+                        fill={f.pk ? "#1a3557" : "#111"}
+                        fontSize={12}
+                        fontStyle={f.pk ? "italic" : "normal"}
+                        fontWeight={f.pk ? 700 : 400}
+                        textDecoration={f.pk ? "underline" : "none"}
+                        fontFamily="'Times New Roman', Times, serif">
                         {f.name}
                       </text>
-                      <text x={t.x + COL_W - 8} y={fy + ROW_H / 2 + 4} textAnchor="end" fill="#64748b" fontSize={10} fontFamily="monospace">
+
+                      <text x={t.x + COL_W - 6} y={fy + ROW_H / 2 + 4}
+                        textAnchor="end" fill="#777" fontSize={10}
+                        fontFamily="'Times New Roman', Times, serif">
                         {f.type}
                       </text>
                     </g>
@@ -338,14 +324,28 @@ export function ERDiagram() {
             );
           })}
 
-          <g>
-            <rect x={20} y={svgH - 68} width={340} height={58} rx={6} fill="#1e293b" stroke="#334155" strokeWidth={1} />
-            <text x={32} y={svgH - 48} fill="#94a3b8" fontSize={11} fontFamily="monospace" fontWeight={700}>ЛЕГЕНДА</text>
-            <text x={32} y={svgH - 30} fill="#fbbf24" fontSize={11} fontFamily="monospace">PK</text>
-            <text x={52} y={svgH - 30} fill="#94a3b8" fontSize={11} fontFamily="monospace">— Primary Key</text>
-            <text x={32} y={svgH - 14} fill="#60a5fa" fontSize={11} fontFamily="monospace">FK</text>
-            <text x={52} y={svgH - 14} fill="#94a3b8" fontSize={11} fontFamily="monospace">— Foreign Key   |—  один   —&lt;  многие</text>
-          </g>
+          <rect x={20} y={SVG_H - 72} width={430} height={62}
+            fill="#fff" stroke="#333" strokeWidth={1} />
+          <text x={30} y={SVG_H - 54} fontSize={11} fontWeight={700}
+            fontFamily="'Times New Roman', Times, serif" fill="#111">Условные обозначения:</text>
+
+          <line x1={30} y1={SVG_H - 32} x2={90} y2={SVG_H - 32} stroke="#555" strokeWidth={1.4} />
+          <OneSymbol  x={30} y={SVG_H - 32} side="R" />
+          <ManySymbol x={90} y={SVG_H - 32} side="L" />
+          <text x={105} y={SVG_H - 28} fontSize={11}
+            fontFamily="'Times New Roman', Times, serif" fill="#111">— связь «один ко многим»</text>
+
+          <text x={30} y={SVG_H - 13} fontSize={11}
+            fontFamily="'Times New Roman', Times, serif" fill="#1a3557" fontStyle="italic" fontWeight={700}>
+            <tspan textDecoration="underline">id</tspan>
+          </text>
+          <text x={44} y={SVG_H - 13} fontSize={11}
+            fontFamily="'Times New Roman', Times, serif" fill="#111">— первичный ключ (PK)</text>
+
+          <text x={180} y={SVG_H - 13} fontSize={11}
+            fontFamily="'Times New Roman', Times, serif" fill="#c0392b" fontWeight={700}>FK</text>
+          <text x={196} y={SVG_H - 13} fontSize={11}
+            fontFamily="'Times New Roman', Times, serif" fill="#111">— внешний ключ (FK)</text>
         </svg>
       </div>
     </div>
