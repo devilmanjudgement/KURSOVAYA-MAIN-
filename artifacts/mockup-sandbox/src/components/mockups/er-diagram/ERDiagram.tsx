@@ -271,7 +271,7 @@ export function ERDiagram() {
   }
 
   const SVG_W = 1340;
-  const SVG_H = 1130;
+  const SVG_H = 1280;
 
   return (
     <div style={{
