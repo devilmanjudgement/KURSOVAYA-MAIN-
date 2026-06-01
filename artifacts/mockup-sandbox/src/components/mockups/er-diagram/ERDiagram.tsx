@@ -8,7 +8,7 @@ export function ERDiagram() {
       id: "users",
       label: "users",
       x: 50,
-      y: 310,
+      y: 300,
       fields: [
         { name: "id", type: "INTEGER", pk: true },
         { name: "name", type: "TEXT" },
@@ -41,7 +41,7 @@ export function ERDiagram() {
       id: "bookings",
       label: "bookings",
       x: 440,
-      y: 430,
+      y: 440,
       fields: [
         { name: "bookingId", type: "INTEGER", pk: true },
         { name: "sectionId", type: "TEXT" },
@@ -68,7 +68,7 @@ export function ERDiagram() {
       id: "messages",
       label: "messages",
       x: 840,
-      y: 330,
+      y: 320,
       fields: [
         { name: "id", type: "INTEGER", pk: true },
         { name: "sender_id", type: "INTEGER", fk: true },
@@ -141,53 +141,21 @@ export function ERDiagram() {
     },
   ];
 
-  function tableH(t: (typeof tables)[0]) {
-    return HEADER_H + t.fields.length * ROW_H;
-  }
-  function rowCY(t: (typeof tables)[0], fi: number) {
-    return t.y + HEADER_H + fi * ROW_H + ROW_H / 2;
-  }
-  function tRight(t: (typeof tables)[0]) {
-    return t.x + COL_W;
-  }
+  function tableH(t: (typeof tables)[0]) { return HEADER_H + t.fields.length * ROW_H; }
+  function rowCY(t: (typeof tables)[0], fi: number) { return t.y + HEADER_H + fi * ROW_H + ROW_H / 2; }
+  function tRight(t: (typeof tables)[0]) { return t.x + COL_W; }
+  function tBottom(t: (typeof tables)[0]) { return t.y + tableH(t); }
+  function tCX(t: (typeof tables)[0]) { return t.x + COL_W / 2; }
 
-  type Rel = {
-    fromId: string; fromField: string;
-    toId: string;   toField: string;
-    label?: string;
-  };
+  type Rel = { fromId: string; fromField: string; toId: string; toField: string; label?: string; };
 
   const relations: Rel[] = [
     { fromId: "sections",      fromField: "coach_id",    toId: "users",    toField: "id" },
-    { fromId: "messages",      fromField: "sender_id",   toId: "users",    toField: "id", label: "sender" },
-    { fromId: "messages",      fromField: "receiver_id", toId: "users",    toField: "id", label: "receiver" },
+    { fromId: "messages",      fromField: "sender_id",   toId: "users",    toField: "id", label: "отправитель" },
+    { fromId: "messages",      fromField: "receiver_id", toId: "users",    toField: "id", label: "получатель" },
     { fromId: "schedule",      fromField: "section_id",  toId: "sections", toField: "id" },
     { fromId: "section_posts", fromField: "section_id",  toId: "sections", toField: "id" },
   ];
-
-  function OneSymbol({ x, y, side }: { x: number; y: number; side: "L" | "R" }) {
-    const d = side === "R" ? 1 : -1;
-    const tick = 8;
-    return (
-      <g>
-        <line x1={x + d * 6}  y1={y - tick} x2={x + d * 6}  y2={y + tick} stroke="#222" strokeWidth={1.5} />
-        <line x1={x + d * 12} y1={y - tick} x2={x + d * 12} y2={y + tick} stroke="#222" strokeWidth={1.5} />
-      </g>
-    );
-  }
-
-  function ManySymbol({ x, y, side }: { x: number; y: number; side: "L" | "R" }) {
-    const d = side === "R" ? 1 : -1;
-    const spread = 9;
-    return (
-      <g>
-        <line x1={x} y1={y} x2={x + d * 14} y2={y - spread} stroke="#222" strokeWidth={1.5} />
-        <line x1={x} y1={y} x2={x + d * 14} y2={y}           stroke="#222" strokeWidth={1.5} />
-        <line x1={x} y1={y} x2={x + d * 14} y2={y + spread}  stroke="#222" strokeWidth={1.5} />
-        <line x1={x + d * 20} y1={y - spread} x2={x + d * 20} y2={y + spread} stroke="#222" strokeWidth={1.5} />
-      </g>
-    );
-  }
 
   function renderRelation(rel: Rel, idx: number) {
     const fT = tables.find(t => t.id === rel.fromId)!;
@@ -197,27 +165,46 @@ export function ERDiagram() {
     const fy = rowCY(fT, fFi);
     const ty = rowCY(tT, tFi);
 
-    let x1: number, x2: number, fromSide: "L"|"R", toSide: "L"|"R";
+    let x1: number, x2: number;
+    let oneX: number, oneY: number, manyX: number, manyY: number;
+    let oneAnchor: string, manyAnchor: string;
+
     if (tRight(fT) <= tT.x) {
-      x1 = tRight(fT); x2 = tT.x; fromSide = "R"; toSide = "L";
+      x1 = tRight(fT); x2 = tT.x;
+      manyX = x1 + 6; manyY = fy; oneX = x2 - 6; oneY = ty;
+      manyAnchor = "start"; oneAnchor = "end";
     } else if (tRight(tT) <= fT.x) {
-      x1 = fT.x; x2 = tRight(tT); fromSide = "L"; toSide = "R";
+      x1 = fT.x; x2 = tRight(tT);
+      manyX = x1 - 6; manyY = fy; oneX = x2 + 6; oneY = ty;
+      manyAnchor = "end"; oneAnchor = "start";
     } else {
-      x1 = tRight(fT); x2 = tT.x; fromSide = "R"; toSide = "L";
+      x1 = tRight(fT); x2 = tT.x;
+      manyX = x1 + 6; manyY = fy; oneX = x2 - 6; oneY = ty;
+      manyAnchor = "start"; oneAnchor = "end";
     }
 
-    const offset = (idx % 3 - 1) * 18;
+    const offset = (idx - 2) * 20;
     const mx = (x1 + x2) / 2 + offset;
     const path = `M${x1},${fy} C${mx},${fy} ${mx},${ty} ${x2},${ty}`;
+    const labelX = mx;
+    const labelY = (fy + ty) / 2;
 
     return (
       <g key={`${rel.fromId}-${rel.fromField}-${idx}`}>
-        <path d={path} fill="none" stroke="#555" strokeWidth={1.4} />
-        <ManySymbol x={x1} y={fy} side={fromSide} />
-        <OneSymbol  x={x2} y={ty} side={toSide} />
+        <path d={path} fill="none" stroke="#444" strokeWidth={1.4} />
+
+        <text x={manyX} y={manyY - 6} textAnchor={manyAnchor}
+          fill="#c0392b" fontSize={13} fontWeight={700}
+          fontFamily="'Times New Roman', Times, serif">N</text>
+
+        <text x={oneX} y={oneY - 6} textAnchor={oneAnchor}
+          fill="#1a3557" fontSize={13} fontWeight={700}
+          fontFamily="'Times New Roman', Times, serif">1</text>
+
         {rel.label && (
-          <text x={mx} y={(fy + ty) / 2 - 5} textAnchor="middle"
-            fill="#666" fontSize={10} fontStyle="italic" fontFamily="serif">
+          <text x={labelX} y={labelY - 6} textAnchor="middle"
+            fill="#666" fontSize={10} fontStyle="italic"
+            fontFamily="'Times New Roman', Times, serif">
             «{rel.label}»
           </text>
         )}
@@ -226,7 +213,7 @@ export function ERDiagram() {
   }
 
   const SVG_W = 1570;
-  const SVG_H = 1010;
+  const SVG_H = 1030;
 
   return (
     <div style={{
@@ -241,13 +228,13 @@ export function ERDiagram() {
           Диаграмма «сущность–связь» базы данных веб-приложения КГУ СПОРТ
         </div>
         <div style={{ fontSize: 12, color: "#555", marginTop: 4 }}>
-          (нотация Crow's Foot, СУБД SQLite)
+          (нотация ER, СУБД SQLite)
         </div>
       </div>
 
       <div style={{ overflowX: "auto" }}>
         <svg width={SVG_W} height={SVG_H} viewBox={`0 0 ${SVG_W} ${SVG_H}`}
-          style={{ display: "block", border: "1px solid #ccc" }}>
+          style={{ display: "block", border: "1px solid #bbb" }}>
 
           {relations.map((r, i) => renderRelation(r, i))}
 
@@ -259,7 +246,7 @@ export function ERDiagram() {
                   fill="#fff" stroke="#333" strokeWidth={1.5} />
 
                 <rect x={t.x} y={t.y} width={COL_W} height={HEADER_H}
-                  fill="#1a3557" stroke="#1a3557" />
+                  fill="#1a3557" />
                 <text x={t.x + COL_W / 2} y={t.y + HEADER_H / 2 + 5}
                   textAnchor="middle" fill="#fff"
                   fontSize={13} fontWeight={700}
@@ -274,34 +261,29 @@ export function ERDiagram() {
                 {t.fields.map((f, fi) => {
                   const fy = t.y + HEADER_H + fi * ROW_H;
                   const isLast = fi === t.fields.length - 1;
-                  const isEven = fi % 2 === 1;
                   return (
                     <g key={f.name}>
-                      {isEven && (
-                        <rect x={t.x + 1} y={fy} width={COL_W - 2} height={ROW_H}
-                          fill="#f5f7fa" />
+                      {fi % 2 === 1 && (
+                        <rect x={t.x + 1} y={fy} width={COL_W - 2} height={ROW_H} fill="#f5f7fa" />
                       )}
                       {!isLast && (
-                        <line x1={t.x} y1={fy + ROW_H}
-                              x2={t.x + COL_W} y2={fy + ROW_H}
-                              stroke="#ccc" strokeWidth={0.8} />
+                        <line x1={t.x} y1={fy + ROW_H} x2={t.x + COL_W} y2={fy + ROW_H}
+                          stroke="#ccc" strokeWidth={0.8} />
                       )}
 
                       {f.pk && (
-                        <>
-                          <text x={t.x + 10} y={fy + ROW_H / 2 + 4}
-                            fill="#1a3557" fontSize={10} fontWeight={700}
-                            fontFamily="'Times New Roman', Times, serif">🔑</text>
-                        </>
+                        <text x={t.x + 10} y={fy + ROW_H / 2 + 4}
+                          fill="#b8860b" fontSize={11}
+                          fontFamily="'Times New Roman', Times, serif">🔑</text>
                       )}
-                      {f.fk && !f.pk && (
+                      {(f as any).fk && !f.pk && (
                         <text x={t.x + 9} y={fy + ROW_H / 2 + 4}
                           fill="#c0392b" fontSize={10} fontWeight={700}
                           fontFamily="'Times New Roman', Times, serif">FK</text>
                       )}
 
                       <text
-                        x={t.x + (f.pk ? 28 : f.fk ? 28 : 12)}
+                        x={t.x + (f.pk || (f as any).fk ? 30 : 12)}
                         y={fy + ROW_H / 2 + 4}
                         fill={f.pk ? "#1a3557" : "#111"}
                         fontSize={12}
@@ -324,28 +306,28 @@ export function ERDiagram() {
             );
           })}
 
-          <rect x={20} y={SVG_H - 72} width={430} height={62}
+          <rect x={20} y={SVG_H - 68} width={420} height={58}
             fill="#fff" stroke="#333" strokeWidth={1} />
-          <text x={30} y={SVG_H - 54} fontSize={11} fontWeight={700}
-            fontFamily="'Times New Roman', Times, serif" fill="#111">Условные обозначения:</text>
-
-          <line x1={30} y1={SVG_H - 32} x2={90} y2={SVG_H - 32} stroke="#555" strokeWidth={1.4} />
-          <OneSymbol  x={30} y={SVG_H - 32} side="R" />
-          <ManySymbol x={90} y={SVG_H - 32} side="L" />
-          <text x={105} y={SVG_H - 28} fontSize={11}
-            fontFamily="'Times New Roman', Times, serif" fill="#111">— связь «один ко многим»</text>
-
-          <text x={30} y={SVG_H - 13} fontSize={11}
-            fontFamily="'Times New Roman', Times, serif" fill="#1a3557" fontStyle="italic" fontWeight={700}>
-            <tspan textDecoration="underline">id</tspan>
+          <text x={30} y={SVG_H - 50} fontSize={11} fontWeight={700}
+            fontFamily="'Times New Roman', Times, serif" fill="#111">
+            Условные обозначения:
           </text>
-          <text x={44} y={SVG_H - 13} fontSize={11}
-            fontFamily="'Times New Roman', Times, serif" fill="#111">— первичный ключ (PK)</text>
-
-          <text x={180} y={SVG_H - 13} fontSize={11}
-            fontFamily="'Times New Roman', Times, serif" fill="#c0392b" fontWeight={700}>FK</text>
-          <text x={196} y={SVG_H - 13} fontSize={11}
-            fontFamily="'Times New Roman', Times, serif" fill="#111">— внешний ключ (FK)</text>
+          <line x1={30} y1={SVG_H - 30} x2={100} y2={SVG_H - 30} stroke="#444" strokeWidth={1.4} />
+          <text x={36} y={SVG_H - 38} fill="#c0392b" fontSize={13} fontWeight={700}
+            fontFamily="'Times New Roman', Times, serif">N</text>
+          <text x={94} y={SVG_H - 38} fill="#1a3557" fontSize={13} fontWeight={700}
+            fontFamily="'Times New Roman', Times, serif">1</text>
+          <text x={110} y={SVG_H - 28} fontSize={11}
+            fontFamily="'Times New Roman', Times, serif" fill="#111">
+            — связь «один ко многим»
+          </text>
+          <text x={30} y={SVG_H - 13} fontSize={11}
+            fontFamily="'Times New Roman', Times, serif">
+            <tspan fill="#b8860b">🔑</tspan>
+            <tspan fill="#111"> — PK (первичный ключ)    </tspan>
+            <tspan fill="#c0392b" fontWeight={700}>FK</tspan>
+            <tspan fill="#111"> — внешний ключ</tspan>
+          </text>
         </svg>
       </div>
     </div>
