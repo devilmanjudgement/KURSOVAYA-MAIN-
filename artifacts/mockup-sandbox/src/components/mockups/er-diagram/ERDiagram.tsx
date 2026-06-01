@@ -1,334 +1,322 @@
 export function ERDiagram() {
-  const ROW_H = 26;
-  const HEADER_H = 34;
-  const COL_W = 320;
+  const COL_W = 310;
+  const ROW_H = 28;
+  const HEADER_H = 38;
+  const BADGE_W = 28;
+
+  const PURPLE = "#7c6fcd";
+  const PURPLE_DARK = "#5a4fa8";
+  const ROW_ODD = "#f3f0ff";
+  const ROW_EVEN = "#ffffff";
+  const BORDER = "#b8b0e0";
+  const LINE = "#5a4fa8";
+  const LABEL_BG = "#f0eeff";
 
   const tables = [
     {
-      id: "users",
-      label: "users",
-      x: 50,
-      y: 300,
+      id: "USERS",
+      x: 330,
+      y: 30,
       fields: [
-        { name: "id", type: "INTEGER", pk: true },
-        { name: "name", type: "TEXT" },
-        { name: "login", type: "TEXT UNIQUE" },
-        { name: "password", type: "TEXT" },
-        { name: "role", type: "TEXT" },
-        { name: "group_name", type: "TEXT" },
-        { name: "avatar", type: "TEXT" },
-        { name: "health_doc", type: "TEXT" },
-        { name: "student_id", type: "TEXT" },
+        { type: "int",    name: "id",          badge: "PK" },
+        { type: "string", name: "name",         badge: "" },
+        { type: "string", name: "login",        badge: "" },
+        { type: "string", name: "password",     badge: "" },
+        { type: "string", name: "role",         badge: "" },
+        { type: "string", name: "group_name",   badge: "" },
+        { type: "string", name: "avatar",       badge: "" },
+        { type: "string", name: "health_doc",   badge: "" },
       ],
     },
     {
-      id: "sections",
-      label: "sections",
-      x: 440,
-      y: 50,
+      id: "SECTIONS",
+      x: 30,
+      y: 350,
       fields: [
-        { name: "id", type: "TEXT", pk: true },
-        { name: "title", type: "TEXT" },
-        { name: "coach_id", type: "INTEGER", fk: true },
-        { name: "place", type: "TEXT" },
-        { name: "color", type: "TEXT" },
-        { name: "image", type: "TEXT" },
-        { name: "description", type: "TEXT" },
-        { name: "max_students", type: "INTEGER" },
+        { type: "int",    name: "id",           badge: "PK" },
+        { type: "string", name: "title",        badge: "" },
+        { type: "int",    name: "coach_id",     badge: "FK" },
+        { type: "string", name: "place",        badge: "" },
+        { type: "string", name: "color",        badge: "" },
+        { type: "string", name: "image",        badge: "" },
+        { type: "text",   name: "description",  badge: "" },
+        { type: "int",    name: "max_students", badge: "" },
       ],
     },
     {
-      id: "bookings",
-      label: "bookings",
-      x: 440,
-      y: 440,
+      id: "BOOKINGS",
+      x: 30,
+      y: 720,
       fields: [
-        { name: "bookingId", type: "INTEGER", pk: true },
-        { name: "sectionId", type: "TEXT" },
-        { name: "user", type: "TEXT" },
-        { name: "date", type: "TEXT" },
-        { name: "docType", type: "TEXT" },
-        { name: "status", type: "TEXT" },
+        { type: "int",    name: "bookingId",    badge: "PK" },
+        { type: "int",    name: "sectionId",    badge: "FK" },
+        { type: "string", name: "user",         badge: "" },
+        { type: "date",   name: "date",         badge: "" },
+        { type: "string", name: "docType",      badge: "" },
+        { type: "string", name: "status",       badge: "" },
       ],
     },
     {
-      id: "schedule",
-      label: "schedule",
-      x: 840,
-      y: 50,
+      id: "SCHEDULE",
+      x: 630,
+      y: 350,
       fields: [
-        { name: "id", type: "INTEGER", pk: true },
-        { name: "day_of_week", type: "TEXT" },
-        { name: "time", type: "TEXT" },
-        { name: "section_id", type: "TEXT", fk: true },
-        { name: "coach_id", type: "INTEGER" },
-      ],
-    },
-    {
-      id: "messages",
-      label: "messages",
-      x: 840,
-      y: 320,
-      fields: [
-        { name: "id", type: "INTEGER", pk: true },
-        { name: "sender_id", type: "INTEGER", fk: true },
-        { name: "receiver_id", type: "INTEGER", fk: true },
-        { name: "text", type: "TEXT" },
-        { name: "read", type: "INTEGER" },
-        { name: "created_at", type: "TEXT" },
-      ],
-    },
-    {
-      id: "attendance",
-      label: "attendance",
-      x: 840,
-      y: 590,
-      fields: [
-        { name: "id", type: "INTEGER", pk: true },
-        { name: "student_name", type: "TEXT" },
-        { name: "section_id", type: "TEXT" },
-        { name: "section_title", type: "TEXT" },
-        { name: "coach_id", type: "INTEGER" },
-        { name: "date", type: "TEXT" },
-        { name: "present", type: "INTEGER" },
-      ],
-    },
-    {
-      id: "student_registry",
-      label: "student_registry",
-      x: 50,
-      y: 700,
-      fields: [
-        { name: "student_id", type: "TEXT", pk: true },
-        { name: "first_name", type: "TEXT NOT NULL" },
-        { name: "last_name", type: "TEXT NOT NULL" },
-        { name: "middle_name", type: "TEXT" },
-        { name: "group_name", type: "TEXT" },
-      ],
-    },
-    {
-      id: "pending_registrations",
-      label: "pending_registrations",
-      x: 440,
-      y: 700,
-      fields: [
-        { name: "id", type: "INTEGER", pk: true },
-        { name: "login", type: "TEXT" },
-        { name: "password", type: "TEXT" },
-        { name: "last_name", type: "TEXT NOT NULL" },
-        { name: "first_name", type: "TEXT NOT NULL" },
-        { name: "middle_name", type: "TEXT" },
-        { name: "student_id", type: "TEXT" },
-        { name: "email", type: "TEXT" },
-        { name: "ip", type: "TEXT" },
-        { name: "status", type: "TEXT" },
-        { name: "rejection_reason", type: "TEXT" },
-        { name: "created_at", type: "TEXT" },
-      ],
-    },
-    {
-      id: "section_posts",
-      label: "section_posts",
-      x: 1200,
-      y: 50,
-      fields: [
-        { name: "id", type: "INTEGER", pk: true },
-        { name: "section_id", type: "TEXT", fk: true },
-        { name: "coach_id", type: "INTEGER" },
-        { name: "text", type: "TEXT" },
-        { name: "created_at", type: "TEXT" },
+        { type: "int",    name: "id",           badge: "PK" },
+        { type: "string", name: "day_of_week",  badge: "" },
+        { type: "time",   name: "time",         badge: "" },
+        { type: "int",    name: "section_id",   badge: "FK" },
+        { type: "int",    name: "coach_id",     badge: "FK" },
       ],
     },
   ];
 
-  function tableH(t: (typeof tables)[0]) { return HEADER_H + t.fields.length * ROW_H; }
-  function rowCY(t: (typeof tables)[0], fi: number) { return t.y + HEADER_H + fi * ROW_H + ROW_H / 2; }
+  function tH(t: (typeof tables)[0]) { return HEADER_H + t.fields.length * ROW_H; }
   function tRight(t: (typeof tables)[0]) { return t.x + COL_W; }
-  function tBottom(t: (typeof tables)[0]) { return t.y + tableH(t); }
+  function tBottom(t: (typeof tables)[0]) { return t.y + tH(t); }
   function tCX(t: (typeof tables)[0]) { return t.x + COL_W / 2; }
+  function tCY(t: (typeof tables)[0]) { return t.y + tH(t) / 2; }
+  function fieldY(t: (typeof tables)[0], fi: number) { return t.y + HEADER_H + fi * ROW_H + ROW_H / 2; }
 
-  type Rel = { fromId: string; fromField: string; toId: string; toField: string; label?: string; };
+  function tById(id: string) { return tables.find(t => t.id === id)!; }
+  function fieldIdx(t: (typeof tables)[0], name: string) { return t.fields.findIndex(f => f.name === name); }
 
-  const relations: Rel[] = [
-    { fromId: "sections",      fromField: "coach_id",    toId: "users",    toField: "id" },
-    { fromId: "messages",      fromField: "sender_id",   toId: "users",    toField: "id", label: "отправитель" },
-    { fromId: "messages",      fromField: "receiver_id", toId: "users",    toField: "id", label: "получатель" },
-    { fromId: "schedule",      fromField: "section_id",  toId: "sections", toField: "id" },
-    { fromId: "section_posts", fromField: "section_id",  toId: "sections", toField: "id" },
+  // Relations: from FK field → to PK field, with label
+  const relations = [
+    {
+      from: "SECTIONS", fromField: "coach_id",
+      to: "USERS", toField: "id",
+      label: "Один ко многим\n(1 преподаватель → N секций)",
+      fromSide: "top", toSide: "bottom",
+    },
+    {
+      from: "SCHEDULE", fromField: "coach_id",
+      to: "USERS", toField: "id",
+      label: "Один ко многим\n(1 преподаватель → N записей расписания)",
+      fromSide: "top", toSide: "right",
+    },
+    {
+      from: "BOOKINGS", fromField: "sectionId",
+      to: "SECTIONS", toField: "id",
+      label: "Один ко многим\n(1 секция → N заявок)",
+      fromSide: "top", toSide: "bottom",
+    },
+    {
+      from: "SCHEDULE", fromField: "section_id",
+      to: "SECTIONS", toField: "id",
+      label: "Один ко многим\n(1 секция → N записей расписания)",
+      fromSide: "left", toSide: "right",
+    },
   ];
 
-  function renderRelation(rel: Rel, idx: number) {
-    const fT = tables.find(t => t.id === rel.fromId)!;
-    const tT = tables.find(t => t.id === rel.toId)!;
-    const fFi = fT.fields.findIndex(f => f.name === rel.fromField);
-    const tFi = tT.fields.findIndex(f => f.name === rel.toField);
-    const fy = rowCY(fT, fFi);
-    const ty = rowCY(tT, tFi);
+  function edgePoint(t: (typeof tables)[0], side: string, fi?: number): [number, number] {
+    if (side === "top")    return [tCX(t), t.y];
+    if (side === "bottom") return [tCX(t), tBottom(t)];
+    if (side === "left")   return [t.x, fi !== undefined ? fieldY(t, fi) : tCY(t)];
+    if (side === "right")  return [tRight(t), fi !== undefined ? fieldY(t, fi) : tCY(t)];
+    return [tCX(t), tCY(t)];
+  }
 
-    let x1: number, x2: number;
-    let oneX: number, oneY: number, manyX: number, manyY: number;
-    let oneAnchor: string, manyAnchor: string;
+  function Arrow({ x, y, dir }: { x: number; y: number; dir: "up"|"down"|"left"|"right" }) {
+    const s = 7;
+    const pts: Record<string, string> = {
+      up:    `${x},${y} ${x - s},${y + s * 1.5} ${x + s},${y + s * 1.5}`,
+      down:  `${x},${y} ${x - s},${y - s * 1.5} ${x + s},${y - s * 1.5}`,
+      left:  `${x},${y} ${x + s * 1.5},${y - s} ${x + s * 1.5},${y + s}`,
+      right: `${x},${y} ${x - s * 1.5},${y - s} ${x - s * 1.5},${y + s}`,
+    };
+    return <polygon points={pts[dir]} fill={LINE} />;
+  }
 
-    if (tRight(fT) <= tT.x) {
-      x1 = tRight(fT); x2 = tT.x;
-      manyX = x1 + 6; manyY = fy; oneX = x2 - 6; oneY = ty;
-      manyAnchor = "start"; oneAnchor = "end";
-    } else if (tRight(tT) <= fT.x) {
-      x1 = fT.x; x2 = tRight(tT);
-      manyX = x1 - 6; manyY = fy; oneX = x2 + 6; oneY = ty;
-      manyAnchor = "end"; oneAnchor = "start";
+  function Circle({ x, y }: { x: number; y: number }) {
+    return <circle cx={x} cy={y} r={5} fill={PURPLE} stroke={LINE} strokeWidth={1.5} />;
+  }
+
+  function renderRelation(rel: (typeof relations)[0], i: number) {
+    const fT = tById(rel.from);
+    const tT = tById(rel.to);
+    const fFi = fieldIdx(fT, rel.fromField);
+    const tFi = fieldIdx(tT, rel.toField);
+    const [x1, y1] = edgePoint(fT, rel.fromSide, fFi);
+    const [x2, y2] = edgePoint(tT, rel.toSide, tFi);
+
+    const mx = (x1 + x2) / 2;
+    const my = (y1 + y2) / 2;
+
+    const arrowDir: Record<string, "up"|"down"|"left"|"right"> = {
+      top: "up", bottom: "down", left: "left", right: "right"
+    };
+
+    const lines = rel.label.split("\n");
+    const labelW = Math.max(...lines.map(l => l.length)) * 6.5 + 20;
+    const labelH = lines.length * 16 + 12;
+
+    let path = `M${x1},${y1} `;
+    if (rel.fromSide === "top" && rel.toSide === "bottom") {
+      path += `L${x1},${my} L${x2},${my} L${x2},${y2}`;
+    } else if (rel.fromSide === "top" && rel.toSide === "right") {
+      path += `L${x1},${y2} L${x2},${y2}`;
+    } else if (rel.fromSide === "left" && rel.toSide === "right") {
+      path += `L${mx},${y1} L${mx},${y2} L${x2},${y2}`;
     } else {
-      x1 = tRight(fT); x2 = tT.x;
-      manyX = x1 + 6; manyY = fy; oneX = x2 - 6; oneY = ty;
-      manyAnchor = "start"; oneAnchor = "end";
+      path += `C${x1},${my} ${x2},${my} ${x2},${y2}`;
     }
 
-    const offset = (idx - 2) * 20;
-    const mx = (x1 + x2) / 2 + offset;
-    const path = `M${x1},${fy} C${mx},${fy} ${mx},${ty} ${x2},${ty}`;
-    const labelX = mx;
-    const labelY = (fy + ty) / 2;
+    const lx = (rel.fromSide === "left" && rel.toSide === "right")
+      ? mx - labelW / 2
+      : Math.min(x1, x2) + Math.abs(x2 - x1) * 0.25;
+    const ly = my - labelH / 2;
 
     return (
-      <g key={`${rel.fromId}-${rel.fromField}-${idx}`}>
-        <path d={path} fill="none" stroke="#444" strokeWidth={1.4} />
+      <g key={i}>
+        <path d={path} fill="none" stroke={LINE} strokeWidth={1.5}
+          strokeDasharray="6,3" />
+        <Circle x={x1} y={y1} />
+        <Arrow x={x2} y={y2} dir={arrowDir[rel.toSide]} />
 
-        <text x={manyX} y={manyY - 6} textAnchor={manyAnchor}
-          fill="#c0392b" fontSize={13} fontWeight={700}
-          fontFamily="'Times New Roman', Times, serif">N</text>
-
-        <text x={oneX} y={oneY - 6} textAnchor={oneAnchor}
-          fill="#1a3557" fontSize={13} fontWeight={700}
-          fontFamily="'Times New Roman', Times, serif">1</text>
-
-        {rel.label && (
-          <text x={labelX} y={labelY - 6} textAnchor="middle"
-            fill="#666" fontSize={10} fontStyle="italic"
-            fontFamily="'Times New Roman', Times, serif">
-            «{rel.label}»
+        <rect x={lx} y={ly} width={labelW} height={labelH}
+          rx={5} fill={LABEL_BG} stroke={BORDER} strokeWidth={1} />
+        {lines.map((line, li) => (
+          <text key={li} x={lx + labelW / 2} y={ly + 14 + li * 16}
+            textAnchor="middle" fill="#3d3580" fontSize={10}
+            fontFamily="Arial, sans-serif">
+            {line}
           </text>
-        )}
+        ))}
       </g>
     );
   }
 
-  const SVG_W = 1570;
-  const SVG_H = 1030;
+  const SVG_W = 990;
+  const SVG_H = 980;
 
   return (
     <div style={{
-      background: "#fff",
+      background: "#faf9ff",
       minHeight: "100vh",
-      padding: "24px 28px",
-      fontFamily: "'Times New Roman', Times, serif",
-      color: "#111",
+      padding: "28px 32px",
+      fontFamily: "Arial, sans-serif",
     }}>
-      <div style={{ textAlign: "center", marginBottom: 20 }}>
-        <div style={{ fontSize: 15, fontWeight: 700, letterSpacing: 0.3 }}>
-          Диаграмма «сущность–связь» базы данных веб-приложения КГУ СПОРТ
+      <div style={{ textAlign: "center", marginBottom: 24 }}>
+        <div style={{
+          fontSize: 16, fontWeight: 700, color: "#3d3580", letterSpacing: 0.5
+        }}>
+          Диаграмма «сущность–связь» — база данных КГУ СПОРТ
         </div>
-        <div style={{ fontSize: 12, color: "#555", marginTop: 4 }}>
-          (нотация ER, СУБД SQLite)
+        <div style={{ fontSize: 12, color: "#888", marginTop: 4 }}>
+          Нотация ER · СУБД SQLite
         </div>
       </div>
 
-      <div style={{ overflowX: "auto" }}>
+      <div style={{ display: "flex", justifyContent: "center" }}>
         <svg width={SVG_W} height={SVG_H} viewBox={`0 0 ${SVG_W} ${SVG_H}`}
-          style={{ display: "block", border: "1px solid #bbb" }}>
+          style={{ background: "#fff", border: "1px solid #d0c8f0", borderRadius: 8 }}>
 
           {relations.map((r, i) => renderRelation(r, i))}
 
           {tables.map(t => {
-            const h = tableH(t);
+            const h = tH(t);
             return (
               <g key={t.id}>
                 <rect x={t.x} y={t.y} width={COL_W} height={h}
-                  fill="#fff" stroke="#333" strokeWidth={1.5} />
+                  rx={6} fill="#fff" stroke={BORDER} strokeWidth={1.5} />
 
                 <rect x={t.x} y={t.y} width={COL_W} height={HEADER_H}
-                  fill="#1a3557" />
-                <text x={t.x + COL_W / 2} y={t.y + HEADER_H / 2 + 5}
+                  rx={6} fill={PURPLE} />
+                <rect x={t.x} y={t.y + HEADER_H - 8} width={COL_W} height={8} fill={PURPLE} />
+                <text x={t.x + COL_W / 2} y={t.y + HEADER_H / 2 + 6}
                   textAnchor="middle" fill="#fff"
-                  fontSize={13} fontWeight={700}
-                  fontFamily="'Times New Roman', Times, serif">
-                  {t.label}
+                  fontSize={14} fontWeight={700} fontFamily="Arial, sans-serif" letterSpacing={1}>
+                  {t.id}
                 </text>
-
-                <line x1={t.x} y1={t.y + HEADER_H}
-                      x2={t.x + COL_W} y2={t.y + HEADER_H}
-                      stroke="#333" strokeWidth={1.5} />
 
                 {t.fields.map((f, fi) => {
                   const fy = t.y + HEADER_H + fi * ROW_H;
                   const isLast = fi === t.fields.length - 1;
+                  const bg = fi % 2 === 0 ? ROW_ODD : ROW_EVEN;
+                  const isLR = isLast;
                   return (
                     <g key={f.name}>
-                      {fi % 2 === 1 && (
-                        <rect x={t.x + 1} y={fy} width={COL_W - 2} height={ROW_H} fill="#f5f7fa" />
-                      )}
+                      <rect x={t.x + 1} y={fy} width={COL_W - 2}
+                        height={ROW_H} fill={bg}
+                        rx={isLR ? 0 : 0}
+                      />
                       {!isLast && (
                         <line x1={t.x} y1={fy + ROW_H} x2={t.x + COL_W} y2={fy + ROW_H}
-                          stroke="#ccc" strokeWidth={0.8} />
+                          stroke={BORDER} strokeWidth={0.8} />
                       )}
 
-                      {f.pk && (
-                        <text x={t.x + 10} y={fy + ROW_H / 2 + 4}
-                          fill="#b8860b" fontSize={11}
-                          fontFamily="'Times New Roman', Times, serif">🔑</text>
-                      )}
-                      {(f as any).fk && !f.pk && (
-                        <text x={t.x + 9} y={fy + ROW_H / 2 + 4}
-                          fill="#c0392b" fontSize={10} fontWeight={700}
-                          fontFamily="'Times New Roman', Times, serif">FK</text>
-                      )}
+                      <text x={t.x + 10} y={fy + ROW_H / 2 + 5}
+                        fill="#8b7dc0" fontSize={11} fontFamily="Arial, sans-serif">
+                        {f.type}
+                      </text>
 
-                      <text
-                        x={t.x + (f.pk || (f as any).fk ? 30 : 12)}
-                        y={fy + ROW_H / 2 + 4}
-                        fill={f.pk ? "#1a3557" : "#111"}
+                      <text x={t.x + 80} y={fy + ROW_H / 2 + 5}
+                        fill={f.badge === "PK" ? PURPLE_DARK : f.badge === "FK" ? "#c0392b" : "#333"}
                         fontSize={12}
-                        fontStyle={f.pk ? "italic" : "normal"}
-                        fontWeight={f.pk ? 700 : 400}
-                        textDecoration={f.pk ? "underline" : "none"}
-                        fontFamily="'Times New Roman', Times, serif">
+                        fontWeight={f.badge ? 600 : 400}
+                        fontFamily="Arial, sans-serif">
                         {f.name}
                       </text>
 
-                      <text x={t.x + COL_W - 6} y={fy + ROW_H / 2 + 4}
-                        textAnchor="end" fill="#777" fontSize={10}
-                        fontFamily="'Times New Roman', Times, serif">
-                        {f.type}
-                      </text>
+                      {f.badge && (
+                        <>
+                          <rect
+                            x={t.x + COL_W - BADGE_W - 6}
+                            y={fy + ROW_H / 2 - 9}
+                            width={BADGE_W} height={18} rx={4}
+                            fill={f.badge === "PK" ? PURPLE : "#e74c3c"}
+                          />
+                          <text
+                            x={t.x + COL_W - BADGE_W / 2 - 6}
+                            y={fy + ROW_H / 2 + 5}
+                            textAnchor="middle"
+                            fill="#fff" fontSize={10} fontWeight={700}
+                            fontFamily="Arial, sans-serif">
+                            {f.badge}
+                          </text>
+                        </>
+                      )}
                     </g>
                   );
                 })}
+
+                {/* bottom rounded corners clip */}
+                <rect x={t.x} y={tBottom(t) - 8} width={COL_W} height={8}
+                  fill={t.fields.length % 2 === 0 ? ROW_EVEN : ROW_ODD} />
+                <rect x={t.x} y={t.y} width={COL_W} height={h}
+                  rx={6} fill="none" stroke={BORDER} strokeWidth={1.5} />
               </g>
             );
           })}
-
-          <rect x={20} y={SVG_H - 68} width={420} height={58}
-            fill="#fff" stroke="#333" strokeWidth={1} />
-          <text x={30} y={SVG_H - 50} fontSize={11} fontWeight={700}
-            fontFamily="'Times New Roman', Times, serif" fill="#111">
-            Условные обозначения:
-          </text>
-          <line x1={30} y1={SVG_H - 30} x2={100} y2={SVG_H - 30} stroke="#444" strokeWidth={1.4} />
-          <text x={36} y={SVG_H - 38} fill="#c0392b" fontSize={13} fontWeight={700}
-            fontFamily="'Times New Roman', Times, serif">N</text>
-          <text x={94} y={SVG_H - 38} fill="#1a3557" fontSize={13} fontWeight={700}
-            fontFamily="'Times New Roman', Times, serif">1</text>
-          <text x={110} y={SVG_H - 28} fontSize={11}
-            fontFamily="'Times New Roman', Times, serif" fill="#111">
-            — связь «один ко многим»
-          </text>
-          <text x={30} y={SVG_H - 13} fontSize={11}
-            fontFamily="'Times New Roman', Times, serif">
-            <tspan fill="#b8860b">🔑</tspan>
-            <tspan fill="#111"> — PK (первичный ключ)    </tspan>
-            <tspan fill="#c0392b" fontWeight={700}>FK</tspan>
-            <tspan fill="#111"> — внешний ключ</tspan>
-          </text>
         </svg>
+      </div>
+
+      <div style={{
+        marginTop: 16, display: "flex", gap: 24, justifyContent: "center",
+        fontSize: 12, color: "#666"
+      }}>
+        <span>
+          <span style={{
+            display: "inline-block", background: PURPLE, color: "#fff",
+            borderRadius: 4, padding: "1px 6px", fontWeight: 700, fontSize: 11, marginRight: 4
+          }}>PK</span>
+          Первичный ключ
+        </span>
+        <span>
+          <span style={{
+            display: "inline-block", background: "#e74c3c", color: "#fff",
+            borderRadius: 4, padding: "1px 6px", fontWeight: 700, fontSize: 11, marginRight: 4
+          }}>FK</span>
+          Внешний ключ
+        </span>
+        <span>
+          <svg width={40} height={16} style={{ verticalAlign: "middle", marginRight: 4 }}>
+            <line x1={0} y1={8} x2={28} y2={8} stroke={LINE} strokeWidth={1.5} strokeDasharray="5,3" />
+            <circle cx={4} cy={8} r={4} fill={PURPLE} />
+            <polygon points="36,8 28,4 28,12" fill={LINE} />
+          </svg>
+          Один ко многим (1→N)
+        </span>
       </div>
     </div>
   );
