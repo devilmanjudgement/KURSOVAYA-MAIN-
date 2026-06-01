@@ -6,3 +6,9 @@ id = "mJISmxYIRXWNpn_3twcfj"
 uri = "file://diploma_kgusport.md"
 type = "text"
 title = "КГУ СПОРТ — материалы для диплома"
+
+[[outputs]]
+id = "iXpbIwfw1Y3WlbWUU_uqA"
+uri = "file://diploma_db_text.txt"
+type = "text"
+title = "Текст про БД для диплома"
