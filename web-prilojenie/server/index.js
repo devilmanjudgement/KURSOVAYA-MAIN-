@@ -305,11 +305,6 @@ app.post("/api/login", rateLimit(60_000, 10), (req, res) => {
 app.post("/api/register", rateLimit(60_000, 10), (req, res) => {
   const ip = req.ip || "unknown";
 
-  if (!checkRegIpLimit(ip)) {
-    secLog("WARN", ip, "Registration IP limit exceeded (3 per 24h)");
-    return res.status(429).json({ success: false, message: "Вы уже отправили 3 заявки на регистрацию за 24 часа. Попробуйте завтра." });
-  }
-
   const login = sanitize(req.body.login || "");
   const password = sanitize(req.body.password || "");
   const last_name = sanitize(req.body.last_name || "");

@@ -470,8 +470,11 @@ function AdminPanel() {
                       ? [r.reg_last_name, r.reg_first_name, r.reg_middle_name].filter(Boolean).join(" ")
                       : null;
 
-                    const fioMatch = regFio
-                      ? fio.trim().toLowerCase() === regFio.trim().toLowerCase()
+                    const norm = (s) => (s || "").trim().toLowerCase();
+                    const fioMatch = r.reg_last_name != null
+                      ? norm(r.last_name) === norm(r.reg_last_name) &&
+                        norm(r.first_name) === norm(r.reg_first_name) &&
+                        norm(r.middle_name) === norm(r.reg_middle_name)
                       : null;
 
                     const statusColors = {
