@@ -243,6 +243,7 @@ CREATE TABLE IF NOT EXISTS pending_registrations (
   middle_name TEXT DEFAULT '',
   email TEXT,
   ip TEXT,
+  student_id TEXT,
   status TEXT DEFAULT 'pending',
   rejection_reason TEXT,
   created_at TEXT DEFAULT CURRENT_TIMESTAMP
